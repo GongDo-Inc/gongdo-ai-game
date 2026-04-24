@@ -1,0 +1,53 @@
+{
+  "version": "v0.3.0",
+  "updated": "2026-04-19",
+  "lessons": [
+    {
+      "no": 1,
+      "title": "바이브코딩 시작",
+      "emoji": "🚀",
+      "file": "lesson1.md",
+      "subtitle": "AI에게 게임을 만들어달라고 부탁해요",
+      "duration_min": 40,
+      "goal": "AI에게 문장으로 말해 게임을 만드는 경험",
+      "variants": [
+        { "key": "space",  "label": "🚀 우주 슈팅", "file": "lesson1.md",       "desc": "외계인을 미사일로 쏴요" },
+        { "key": "catch",  "label": "🌟 별 받기",   "file": "lesson1_catch.md", "desc": "떨어지는 별을 좌우로 받아요" },
+        { "key": "jump",   "label": "🐰 점프 회피", "file": "lesson1_jump.md",  "desc": "장애물을 점프로 피해요" }
+      ]
+    },
+    {
+      "no": 2,
+      "title": "캐릭터 꾸미기",
+      "emoji": "🎭",
+      "file": "lesson2.md",
+      "subtitle": "넷마블 친구들을 게임에 넣어요",
+      "duration_min": 40,
+      "goal": "IP 캐릭터 삽입 · 색상/배경 변경"
+    },
+    {
+      "no": 3,
+      "title": "효과음·BGM",
+      "emoji": "🎵",
+      "file": "lesson3.md",
+      "subtitle": "게임에 음악을 더해요",
+      "duration_min": 40,
+      "goal": "AI로 BGM 생성 · 게임에 삽입"
+    },
+    {
+      "no": 4,
+      "title": "발표 자료 만들기",
+      "emoji": "📣",
+      "file": "lesson4.md",
+      "subtitle": "내 게임을 친구들에게 소개해요",
+      "duration_min": 40,
+      "goal": "작품 소개글 · 프롬프트 히스토리 정리"
+    }
+  ],
+  "myworks_folders": [
+    { "lesson": 1, "label": "1차시 작품" },
+    { "lesson": 2, "label": "2차시 작품" },
+    { "lesson": 3, "label": "3차시 작품" },
+    { "lesson": 4, "label": "4차시 작품" }
+  ]
+}
