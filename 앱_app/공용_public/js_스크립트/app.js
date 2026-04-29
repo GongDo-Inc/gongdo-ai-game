@@ -309,7 +309,8 @@
   // ─────────── 헤더 버튼 ───────────
   function initHeaderButtons() {
     $('#btn-start').addEventListener('click', handleStartClick);
-    $('#btn-save').addEventListener('click', handleSaveClick);
+    const btnSave = $('#btn-save');
+    if (btnSave) btnSave.addEventListener('click', handleSaveClick);
     $('#btn-help').addEventListener('click', handleHelpClick);
   }
 
@@ -317,6 +318,36 @@
   let loadingTimer = null;
   let genTimerInterval = null;
   let genStartTime = null;
+
+  // ─── 1차시 (모두의 블루마블) — 학생 문서에서 설정 5종 파싱 ───
+  // 마크다운에서 "**라벨**: 값" 패턴을 잡아내고, 한국어/숫자/이모지가 섞여도 안전하게 추출.
+  function parseBluemarbleSettings(text) {
+    const get = (label) => {
+      const re = new RegExp(`\\*{0,2}${label}\\*{0,2}\\s*[:：]\\s*([^\\n]+)`);
+      const m = text.match(re);
+      return m ? m[1].trim().replace(/[*"'`]/g, '').trim() : null;
+    };
+    // 캐릭터: '슬기' 키워드가 있으면 슬기, 아니면 데니스 (기본)
+    const charText = get('내 캐릭터') || '';
+    const character = charText.includes('슬기') ? 'seulgi' : 'dennis';
+    // 이름: 빈 값/없음이면 null (게임에서 기본 이름 사용)
+    const nameRaw = get('내 이름') || '';
+    const name = nameRaw && !/^(데니스|슬기)$/.test(nameRaw) ? nameRaw.slice(0, 12) : null;
+    // 승리 골드: 숫자만 추출, 1,000~999,999 범위로 클램프
+    const winGoldText = get('승리 골드') || '';
+    const winGold = Math.max(1000, Math.min(999999,
+      parseInt(winGoldText.replace(/[^\d]/g, ''), 10) || 50000));
+    // 주사위 개수: 1~3 범위
+    const diceMatch = (get('주사위 개수') || '').match(/(\d+)/);
+    const dice = Math.max(1, Math.min(3, diceMatch ? parseInt(diceMatch[1], 10) : 2));
+    // BGM 종류: 한글 키워드 매핑
+    const bgmText = (get('음악\\(BGM\\)') || get('음악') || get('BGM') || '모험').toLowerCase();
+    let bgm = 'adventure';
+    if (/잔잔|차분|평화/.test(bgmText)) bgm = 'calm';
+    else if (/신남|빠른|업비트|즐거/.test(bgmText)) bgm = 'upbeat';
+    else if (/끄기|꺼|off|none/.test(bgmText)) bgm = 'off';
+    return { character, name, winGold, dice, bgm };
+  }
 
   async function handleStartClick() {
     const editor = $('#editor-textarea');
@@ -327,6 +358,29 @@
 
     // 학생이 [시작]을 직접 눌렀음 → attention 안내 종료
     clearStartButtonAttention();
+
+    // 1차시 (모두의 블루마블): AI 호출 없이 정적 게임 로드
+    // 학생이 문서에서 바꾼 설정 5종을 파싱하여 URL 파라미터로 게임에 주입.
+    if (state.currentLesson === 1) {
+      const settings = parseBluemarbleSettings(editor.value);
+      const params = new URLSearchParams();
+      params.set('character', settings.character);
+      if (settings.name) params.set('name', settings.name);
+      params.set('winGold', String(settings.winGold));
+      params.set('dice', String(settings.dice));
+      params.set('bgm', settings.bgm);
+      const baseUrl = './에셋_assets/샘플게임_samples/bluemarble/index.html';
+      launchGame(`${baseUrl}?${params.toString()}`);
+      const displayName = settings.name || (settings.character === 'seulgi' ? '슬기' : '데니스');
+      $('#game-status').textContent = `🎲 모두의 블루마블 — ${displayName}(으)로 출발!`;
+      // [🔍 코드 구경] 패널용 HTML 본문 fetch (URL 파라미터 없이 원본만)
+      const sourceText = editor.value;
+      fetch(baseUrl).then((r) => r.text()).then((html) => {
+        state.lastGeneratedHtml = html;
+        state.lastGeneratedHtmlSnapshot = { html, sourceText };
+      }).catch(() => { /* 코드 구경 미사용 시 무시 */ });
+      return;
+    }
 
     if (state.abortController) state.abortController.abort();
     state.abortController = new AbortController();
@@ -1430,10 +1484,8 @@
   // chat.js v1.5.0 매핑표(line 228~233) 절대 URL 형식과 정합 (CRITICAL-3 차단).
   const IP_ASSET_BASE = 'https://gongdo-ai-game.vercel.app/에셋_assets/캐릭터_characters';
   const IP_META = {
-    kk:   { name: 'ㅋㅋ',  url: `${IP_ASSET_BASE}/kk_idle.png` },
-    tory: { name: '토리',  url: `${IP_ASSET_BASE}/tory_idle.png` },
-    bob:  { name: '밥',    url: `${IP_ASSET_BASE}/bob_idle.png` },
-    leon: { name: '레옹',  url: `${IP_ASSET_BASE}/leon_idle.png` },
+    seulgi: { name: '슬기',   url: `${IP_ASSET_BASE}/archive/seulgi.png` },
+    dennis: { name: '데니스', url: `${IP_ASSET_BASE}/archive/dennis.png` },
   };
   // 정규식: lesson1·2·1_catch·1_jump 모두 매치
   //   lesson1:        `- 주인공: 파란 우주선`
@@ -1443,7 +1495,7 @@
   const HERO_LINE_PATTERN = /^(- 주인공:\s*)([^\n(]*?)(\s*\(이미지:[^)]*\))?\s*$/m;
 
   // ── in-memory 영속성 (대표 2차 결정 🅱️) ──
-  let _characterUnlocked = false;
+  let _characterUnlocked = true;
   let _charUnlockComposing = false;
   let _charToastTimer = null;
 
@@ -1456,6 +1508,27 @@
     const lockIcon = btn ? btn.querySelector('.character-lock-icon') : null;
     const charIcon = btn ? btn.querySelector('.character-icon') : null;
     if (!btn) return;
+
+    // 1차시 (블루마블): 자체 `**내 캐릭터**:` 마크다운 메커니즘 사용
+    // → IP 캐릭터 버튼은 보이되 "잠김" 상태로 표시 (클릭 시 알럿 방지)
+    const wrapper = $('#btn-character-wrapper');
+    if (Number(state.currentLesson) === 1) {
+      if (wrapper) wrapper.hidden = false;
+      btn.hidden = false;
+      btn.disabled = true;
+      btn.classList.add('is-locked');
+      btn.setAttribute('aria-label', '캐릭터 (이 차시에서는 문서로 변경)');
+      btn.title = '문서에서 "내 캐릭터" 부분을 직접 바꿔요';
+      if (lockIcon) lockIcon.hidden = false;
+      if (charIcon) charIcon.hidden = true;
+      if (unlockBtn) unlockBtn.hidden = true;
+      const popover = $('#character-popover');
+      if (popover) { popover.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+      return;
+    }
+    btn.hidden = false;
+    if (wrapper) wrapper.hidden = false;
+
     const unlocked = isCharacterUnlocked();
     btn.disabled = !unlocked;
     btn.classList.toggle('is-locked', !unlocked);
@@ -1791,22 +1864,35 @@
   }
 
   function refreshFeatureGateButtons() {
+    // 1차시 (블루마블): BGM과 배경은 마크다운에서 직접 설정하므로 도구바 버튼 숨김
+    const isBluemarbleLesson = Number(state.currentLesson) === 1;
+
     // 음악
     const bgmBtn = $('#btn-bgm');
     const bgmUnlockBtn = $('#btn-bgm-unlock');
     if (bgmBtn && bgmUnlockBtn) {
-      if (isFeatureGated('music')) {
+      if (isBluemarbleLesson) {
+        bgmBtn.hidden = false;
         bgmBtn.disabled = true;
         bgmBtn.classList.add('is-locked');
-        bgmBtn.setAttribute('aria-label', '음악 (잠김)');
-        bgmBtn.title = '선생님이 알려주실 때 켜요';
-        bgmUnlockBtn.hidden = false;
-      } else {
-        bgmBtn.disabled = false;
-        bgmBtn.classList.remove('is-locked');
-        bgmBtn.setAttribute('aria-label', '배경음악 열기');
-        bgmBtn.removeAttribute('title');
+        bgmBtn.setAttribute('aria-label', '음악 (이 차시에서는 문서로 변경)');
+        bgmBtn.title = '문서에서 "음악(BGM)" 부분을 직접 바꿔요';
         bgmUnlockBtn.hidden = true;
+      } else {
+        bgmBtn.hidden = false;
+        if (isFeatureGated('music')) {
+          bgmBtn.disabled = true;
+          bgmBtn.classList.add('is-locked');
+          bgmBtn.setAttribute('aria-label', '음악 (잠김)');
+          bgmBtn.title = '선생님이 알려주실 때 켜요';
+          bgmUnlockBtn.hidden = false;
+        } else {
+          bgmBtn.disabled = false;
+          bgmBtn.classList.remove('is-locked');
+          bgmBtn.setAttribute('aria-label', '배경음악 열기');
+          bgmBtn.removeAttribute('title');
+          bgmUnlockBtn.hidden = true;
+        }
       }
     }
     // 예시 — 본 [예시] 버튼은 차시별 hidden 토글되므로 unlock 버튼도 동기 처리
@@ -1832,18 +1918,28 @@
     const themeBtn = $('#btn-theme');
     const themeUnlockBtn = $('#btn-theme-unlock');
     if (themeBtn && themeUnlockBtn) {
-      if (isFeatureGated('theme')) {
+      if (isBluemarbleLesson) {
+        themeBtn.hidden = false;
         themeBtn.disabled = true;
         themeBtn.classList.add('is-locked');
-        themeBtn.setAttribute('aria-label', '배경 (잠김)');
-        themeBtn.title = '선생님이 알려주실 때 켜요';
-        themeUnlockBtn.hidden = false;
-      } else {
-        themeBtn.disabled = false;
-        themeBtn.classList.remove('is-locked');
-        themeBtn.setAttribute('aria-label', '배경 고르기');
-        themeBtn.removeAttribute('title');
+        themeBtn.setAttribute('aria-label', '배경 (이 차시에서는 사용 불가)');
+        themeBtn.title = '블루마블은 세계지도 배경으로 고정되어 있어요';
         themeUnlockBtn.hidden = true;
+      } else {
+        themeBtn.hidden = false;
+        if (isFeatureGated('theme')) {
+          themeBtn.disabled = true;
+          themeBtn.classList.add('is-locked');
+          themeBtn.setAttribute('aria-label', '배경 (잠김)');
+          themeBtn.title = '선생님이 알려주실 때 켜요';
+          themeUnlockBtn.hidden = false;
+        } else {
+          themeBtn.disabled = false;
+          themeBtn.classList.remove('is-locked');
+          themeBtn.setAttribute('aria-label', '배경 고르기');
+          themeBtn.removeAttribute('title');
+          themeUnlockBtn.hidden = true;
+        }
       }
     }
   }

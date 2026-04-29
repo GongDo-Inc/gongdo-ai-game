@@ -69,8 +69,17 @@ function adapt(req, res) {
   return resWrap;
 }
 
+// 운영(NODE_ENV=production)에서는 핸들러 모듈을 캐시 → 메모리 누수/성능 저하 방지.
+// 개발 환경에서는 매 요청마다 새로 import 하여 코드 변경 즉시 반영.
+const _apiHandlerCache = new Map();
 async function getApiHandler(apiPath) {
-  // 개발 편의: 매 요청마다 파일을 새로 import (코드 변경 즉시 반영)
+  if (process.env.NODE_ENV === 'production') {
+    if (!_apiHandlerCache.has(apiPath)) {
+      const mod = await import(pathToFileURL(apiPath).href);
+      _apiHandlerCache.set(apiPath, mod.default);
+    }
+    return _apiHandlerCache.get(apiPath);
+  }
   const mod = await import(pathToFileURL(apiPath).href + `?t=${Date.now()}`);
   return mod.default;
 }

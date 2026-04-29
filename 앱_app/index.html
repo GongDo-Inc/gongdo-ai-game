@@ -58,10 +58,6 @@
       <button type="button" class="btn btn-secondary" id="btn-present" aria-label="발표자료 만들기">
         <span aria-hidden="true">📤</span> 발표자료
       </button>
-      <!-- F-SAVE-01: 저장은 로그인(S08) 연동 후 정식 지원. 파일럿에서는 [📤 발표자료]로 작품 공유 유도 -->
-      <button type="button" class="btn btn-secondary" id="btn-save" aria-label="내 작품 저장" hidden>
-        <span aria-hidden="true">💾</span> 저장
-      </button>
     </nav>
   </header>
 
@@ -98,26 +94,15 @@
             <span aria-hidden="true">🔍</span> <span class="toolbar-btn-label">코드 구경</span>
           </button>
           <span class="toolbar-btn-wrapper" id="btn-character-wrapper">
-            <button type="button" class="toolbar-btn is-locked" id="btn-character" aria-label="캐릭터 넣기 (잠김)" aria-expanded="false" aria-controls="character-popover" disabled title="선생님이 알려주실 때 켜요">
-              <span class="character-lock-icon" aria-hidden="true">🔒</span><span class="character-icon" aria-hidden="true" hidden>👤</span> <span class="toolbar-btn-label">캐릭터</span>
+            <button type="button" class="toolbar-btn" id="btn-character" aria-label="캐릭터 넣기" aria-expanded="false" aria-controls="character-popover">
+              <span class="character-lock-icon" aria-hidden="true" hidden>🔒</span><span class="character-icon" aria-hidden="true">👤</span> <span class="toolbar-btn-label">캐릭터</span>
             </button>
           </span>
-          <button type="button" class="toolbar-btn toolbar-btn-unlock" id="btn-character-unlock" aria-label="캐릭터 활성화하기" aria-haspopup="dialog">
-            <span aria-hidden="true">🔓</span> <span class="toolbar-btn-label">캐릭터 활성화하기</span>
-          </button>
           <button type="button" class="toolbar-btn" id="btn-theme" aria-label="배경 고르기" aria-expanded="false" aria-controls="theme-popover">
             <span aria-hidden="true">🎨</span> <span class="toolbar-btn-label">배경</span>
           </button>
-          <!-- BUNKER-2026-04-28-003: [🔓 배경 활성화하기] (manifest.featureFlags.theme.enabled === false 일 때 노출) -->
-          <button type="button" class="toolbar-btn toolbar-btn-unlock" id="btn-theme-unlock" aria-label="배경 활성화하기" aria-haspopup="dialog" hidden>
-            <span aria-hidden="true">🔓</span> <span class="toolbar-btn-label">배경 활성화하기</span>
-          </button>
           <button type="button" class="toolbar-btn" id="btn-bgm" aria-label="배경음악 열기" aria-expanded="false" aria-controls="bgm-popover">
             <span aria-hidden="true">🎵</span> <span class="toolbar-btn-label" id="btn-bgm-label">음악</span>
-          </button>
-          <!-- BUNKER-2026-04-28-001: [🔓 음악 활성화하기] (manifest.featureFlags.music.enabled === false 일 때 노출) -->
-          <button type="button" class="toolbar-btn toolbar-btn-unlock" id="btn-bgm-unlock" aria-label="음악 활성화하기" aria-haspopup="dialog" hidden>
-            <span aria-hidden="true">🔓</span> <span class="toolbar-btn-label">음악 활성화하기</span>
           </button>
         </div>
 
@@ -148,35 +133,19 @@
           </div>
           <ul class="character-grid" id="character-grid">
             <li>
-              <button type="button" class="character-card" data-char="kk" data-label="ㅋㅋ" data-file="kk_idle.png" data-emoji="🦸">
-                <img class="character-img" src="./에셋_assets/캐릭터_characters/kk_em.png" alt="ㅋㅋ 캐릭터"
-                     onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'character-emoji',textContent:'🦸'}))">
-                <span class="character-name">ㅋㅋ</span>
-                <span class="character-desc">용감 장난꾸러기</span>
+              <button type="button" class="character-card" data-char="seulgi" data-label="슬기" data-file="archive/seulgi.png" data-emoji="👧">
+                <img class="character-img" src="./에셋_assets/캐릭터_characters/archive/seulgi.png" alt="슬기 캐릭터"
+                     onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'character-emoji',textContent:'👧'}))">
+                <span class="character-name">슬기</span>
+                <span class="character-desc">밝고 씩씩한 탐험가</span>
               </button>
             </li>
             <li>
-              <button type="button" class="character-card" data-char="tory" data-label="토리" data-file="tory_idle.png" data-emoji="👒">
-                <img class="character-img" src="./에셋_assets/캐릭터_characters/tory_em.png" alt="토리 캐릭터"
-                     onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'character-emoji',textContent:'👒'}))">
-                <span class="character-name">토리</span>
-                <span class="character-desc">똑똑 다정</span>
-              </button>
-            </li>
-            <li>
-              <button type="button" class="character-card" data-char="bob" data-label="밥" data-file="bob_idle.png" data-emoji="🐰">
-                <img class="character-img" src="./에셋_assets/캐릭터_characters/bob_em.png" alt="밥 캐릭터"
-                     onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'character-emoji',textContent:'🐰'}))">
-                <span class="character-name">밥</span>
-                <span class="character-desc">느긋 푸근</span>
-              </button>
-            </li>
-            <li>
-              <button type="button" class="character-card" data-char="leon" data-label="레옹" data-file="leon_idle.png" data-emoji="🦁">
-                <img class="character-img" src="./에셋_assets/캐릭터_characters/leon_em.png" alt="레옹 캐릭터"
-                     onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'character-emoji',textContent:'🦁'}))">
-                <span class="character-name">레옹</span>
-                <span class="character-desc">용맹 든든</span>
+              <button type="button" class="character-card" data-char="dennis" data-label="데니스" data-file="archive/dennis.png" data-emoji="👦">
+                <img class="character-img" src="./에셋_assets/캐릭터_characters/archive/dennis.png" alt="데니스 캐릭터"
+                     onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'character-emoji',textContent:'👦'}))">
+                <span class="character-name">데니스</span>
+                <span class="character-desc">유쾌한 모험 대장</span>
               </button>
             </li>
           </ul>

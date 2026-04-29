@@ -2,25 +2,20 @@
   "version": "v0.4.3",
   "updated": "2026-04-28",
   "featureFlags": {
-    "music":   { "enabled": false, "_note": "도구바 [음악] 버튼. true 로 바꾸면 즉시 활성화됨. (BUNKER-2026-04-28-001)" },
+    "music":   { "enabled": true, "_note": "도구바 [음악] 버튼. true 로 바꾸면 즉시 활성화됨. (BUNKER-2026-04-28-001)" },
     "example": { "enabled": false, "_note": "도구바 [예시] 버튼. true 로 바꾸면 즉시 활성화됨. (BUNKER-2026-04-28-001)" },
-    "theme":   { "enabled": false, "_note": "도구바 [배경] 버튼. true 로 바꾸면 즉시 활성화됨. (BUNKER-2026-04-28-003)" }
+    "theme":   { "enabled": true, "_note": "도구바 [배경] 버튼. true 로 바꾸면 즉시 활성화됨. (BUNKER-2026-04-28-003)" }
   },
   "lessons": [
     {
       "no": 1,
       "enabled": true,
-      "title": "바이브코딩 시작",
-      "emoji": "🚀",
+      "title": "모두의 블루마블",
+      "emoji": "🎲",
       "file": "lesson1.md",
-      "subtitle": "AI에게 게임을 만들어달라고 부탁해요",
+      "subtitle": "주사위를 굴려 세계 일주를 떠나요",
       "duration_min": 40,
-      "goal": "AI에게 문장으로 말해 게임을 만드는 경험",
-      "variants": [
-        { "key": "space",  "label": "🚀 우주 슈팅", "file": "lesson1.md",       "desc": "외계인을 미사일로 쏴요" },
-        { "key": "catch",  "label": "🌟 별 받기",   "file": "lesson1_catch.md", "desc": "떨어지는 별을 좌우로 받아요" },
-        { "key": "jump",   "label": "🐰 점프 회피", "file": "lesson1_jump.md",  "desc": "장애물을 점프로 피해요" }
-      ]
+      "goal": "보드게임으로 바이브코딩의 첫 경험"
     },
     {
       "no": 2,

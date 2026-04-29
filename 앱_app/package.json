@@ -6,8 +6,11 @@
   "type": "module",
   "scripts": {
     "dev": "vercel dev --listen 3000",
-    "start": "vercel dev --listen 3000",
-    "serve:static": "npx serve . -l 3000"
+    "start": "node dev-server.js",
+    "serve:vercel": "vercel dev --listen 3000",
+    "serve:static": "npx serve . -l 3000",
+    "deploy": "./deploy.sh",
+    "setup-secrets": "./setup-secrets.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",

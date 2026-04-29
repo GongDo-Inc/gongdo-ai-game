@@ -1,0 +1,25 @@
+# 의존성·캐시
+node_modules
+npm-debug.log
+.npm
+
+# 환경변수 (Cloud Run env vars / Secret Manager 사용)
+.env
+.env.local
+.env.*.local
+
+# Git / OS
+.git
+.gitignore
+.DS_Store
+
+# 개발 산출물 / 문서 (운영에서 미사용)
+README.md
+*.md
+!차시_lessons/*.md
+
+# 에디터 / 임시
+.vscode
+.idea
+*.swp
+*.tmp
