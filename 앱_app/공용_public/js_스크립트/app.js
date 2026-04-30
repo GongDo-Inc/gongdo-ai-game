@@ -58,6 +58,7 @@
   const state = {
     manifest: null,
     currentLesson: null,
+    currentLessonFile: null,
     currentVariantKey: null,
     currentWork: null,
     myWorks: [],
@@ -297,6 +298,7 @@
       const stripped = raw.replace(/^\s*<!--[\s\S]*?-->\s*/, '');
       state.lessonCache.set(file, stripped);
     }
+    state.currentLessonFile = file;
     editor.value = state.lessonCache.get(file);
   }
 
@@ -319,34 +321,395 @@
   let genTimerInterval = null;
   let genStartTime = null;
 
-  // ─── 1차시 (모두의 블루마블) — 학생 문서에서 설정 5종 파싱 ───
-  // 마크다운에서 "**라벨**: 값" 패턴을 잡아내고, 한국어/숫자/이모지가 섞여도 안전하게 추출.
-  function parseBluemarbleSettings(text) {
-    const get = (label) => {
-      const re = new RegExp(`\\*{0,2}${label}\\*{0,2}\\s*[:：]\\s*([^\\n]+)`);
-      const m = text.match(re);
-      return m ? m[1].trim().replace(/[*"'`]/g, '').trim() : null;
+  const MARBLE_TEMPLATE_PATH = './에셋_assets/샘플게임_samples/bluemarble/index.html';
+  const MARBLE_TEMPLATE_BASE = `${window.location.origin}/에셋_assets/샘플게임_samples/bluemarble/`;
+  const MARBLE_IP_META = {
+    '데니스': { id: 'dennis', emoji: '👦', imageUrl: '../../캐릭터_characters/archive/dennis.png' },
+    '슬기': { id: 'seulgi', emoji: '👧', imageUrl: '../../캐릭터_characters/archive/seulgi.png' },
+  };
+  const SIMPLE_COLOR_MAP = {
+    '빨간': '#E63946',
+    '빨강': '#E63946',
+    'red': '#E63946',
+    '파란': '#3D7BA3',
+    '파랑': '#3D7BA3',
+    'blue': '#3D7BA3',
+    '초록': '#2E8B57',
+    '초록색': '#2E8B57',
+    'green': '#2E8B57',
+    '주황': '#F28C28',
+    '주황색': '#F28C28',
+    'orange': '#F28C28',
+    '노란': '#F7C548',
+    '노랑': '#F7C548',
+    'yellow': '#F7C548',
+    '검정': '#1A1A1A',
+    '검은': '#1A1A1A',
+    '검정색': '#1A1A1A',
+    'black': '#1A1A1A',
+    '하양': '#FFFFFF',
+    '하얀': '#FFFFFF',
+    '하얀색': '#FFFFFF',
+    'white': '#FFFFFF',
+    '보라': '#7B61A8',
+    '보라색': '#7B61A8',
+    'purple': '#7B61A8',
+    '분홍': '#F48FA0',
+    '분홍색': '#F48FA0',
+    'pink': '#F48FA0',
+  };
+
+  function resolveNamedColor(text, fallback) {
+    const normalized = String(text || '').trim().toLowerCase();
+    if (!normalized) return fallback;
+    if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(normalized)) return normalized;
+    return SIMPLE_COLOR_MAP[normalized] || SIMPLE_COLOR_MAP[normalized.replace(/\s+/g, '')] || fallback;
+  }
+
+  function resolveMarbleCharacterImageUrl(name, rawImageUrl) {
+    const byName = MARBLE_IP_META[name]?.imageUrl;
+    if (byName) return byName;
+    const url = String(rawImageUrl || '');
+    if (/dennis\.png/i.test(url)) return MARBLE_IP_META['데니스'].imageUrl;
+    if (/seulgi\.png/i.test(url)) return MARBLE_IP_META['슬기'].imageUrl;
+    return url || '';
+  }
+
+  function parseLessonOnePins(text) {
+    const block = sectionBlock(text, '플레이어 핀');
+    const fallback = [
+      { name: '나', color: '#E63946', isHuman: true, id: 'player-human' },
+      { name: '친구', color: '#3D7BA3', isHuman: false, id: 'player-ai' },
+    ];
+    if (!block) return fallback;
+    const lines = block
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => /^-\s+/.test(line));
+    const parsed = lines.map((line, index) => {
+      const match = line.match(/^-\s*\*{0,2}([^:*]+?)\*{0,2}\s*:\s*(.+)$/);
+      if (!match) return null;
+      const name = match[1].trim();
+      const colorText = match[2].replace(/핀/g, '').trim();
+      const base = fallback[index] || fallback[fallback.length - 1];
+      return {
+        name: name || base.name,
+        color: resolveNamedColor(colorText, base.color),
+        isHuman: index === 0,
+        id: index === 0 ? 'player-human' : `player-${index}`,
+      };
+    }).filter(Boolean);
+    return parsed.length ? parsed.slice(0, 2) : fallback;
+  }
+
+  function parseLessonOneDice(text) {
+    const block = sectionBlock(text, '주사위');
+    const line = block.split('\n').map((value) => value.trim()).find(Boolean) || '기본 주사위';
+    const themeText = line.replace(/^-\s*/, '').trim();
+    if (/별/.test(themeText)) return { label: themeText, emoji: '⭐', theme: 'star' };
+    if (/하트/.test(themeText)) return { label: themeText, emoji: '💖', theme: 'heart' };
+    if (/번개/.test(themeText)) return { label: themeText, emoji: '⚡', theme: 'lightning' };
+    return { label: themeText || '기본 주사위', emoji: '🎲', theme: 'classic' };
+  }
+
+  function parseLessonOneBoardColor(text) {
+    const backgroundBlock = sectionBlock(text, '배경');
+    const boardBlock = sectionBlock(text, '보드판');
+    const candidates = []
+      .concat(backgroundBlock ? backgroundBlock.split('\n') : [])
+      .concat(boardBlock ? boardBlock.split('\n') : []);
+    for (const line of candidates.map((value) => value.trim())) {
+      if (!line) continue;
+      const boardColorMatch = line.match(/보드\s*색상[:：]?\s*(.+)$/);
+      if (boardColorMatch) {
+        return resolveNamedColor(boardColorMatch[1].replace(/배경색|색상|색|보드판/g, '').trim(), '#D8C6A4');
+      }
+      const backgroundMatch = line.match(/(.+?)\s*배경색$/);
+      if (backgroundMatch) {
+        return resolveNamedColor(backgroundMatch[1].trim(), '#D8C6A4');
+      }
+    }
+    return '#D8C6A4';
+  }
+
+  function numberFromText(text, fallback = 0) {
+    const match = String(text || '').replace(/,/g, '').match(/-?\d+/);
+    return match ? Number(match[0]) : fallback;
+  }
+
+  function sectionBlock(text, heading) {
+    const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`^#{2,3}\\s+${escaped}\\s*\\n([\\s\\S]*?)(?=^#{2,3}\\s+|^---|\\Z)`, 'm');
+    const match = text.match(re);
+    return match ? match[1].trim() : '';
+  }
+
+  function parseHeroLine(text) {
+    const match = text.match(/^- 주인공:\s*([^(]+?)(?:\s*\(이미지:\s*([^)]+)\))?\s*$/m);
+    if (!match) return null;
+    const rawName = match[1].trim();
+    const rawImageUrl = match[2]?.trim() || '';
+    const fallback = MARBLE_IP_META[rawName] || MARBLE_IP_META['데니스'];
+    return {
+      name: fallback ? (rawName in MARBLE_IP_META ? rawName : '데니스') : '데니스',
+      imageUrl: resolveMarbleCharacterImageUrl(rawName, rawImageUrl) || fallback?.imageUrl || '',
+      emoji: fallback?.emoji || '🎮',
+      id: fallback?.id || 'dennis',
     };
-    // 캐릭터: '슬기' 키워드가 있으면 슬기, 아니면 데니스 (기본)
-    const charText = get('내 캐릭터') || '';
-    const character = charText.includes('슬기') ? 'seulgi' : 'dennis';
-    // 이름: 빈 값/없음이면 null (게임에서 기본 이름 사용)
-    const nameRaw = get('내 이름') || '';
-    const name = nameRaw && !/^(데니스|슬기)$/.test(nameRaw) ? nameRaw.slice(0, 12) : null;
-    // 승리 골드: 숫자만 추출, 1,000~999,999 범위로 클램프
-    const winGoldText = get('승리 골드') || '';
-    const winGold = Math.max(1000, Math.min(999999,
-      parseInt(winGoldText.replace(/[^\d]/g, ''), 10) || 50000));
-    // 주사위 개수: 1~3 범위
-    const diceMatch = (get('주사위 개수') || '').match(/(\d+)/);
-    const dice = Math.max(1, Math.min(3, diceMatch ? parseInt(diceMatch[1], 10) : 2));
-    // BGM 종류: 한글 키워드 매핑
-    const bgmText = (get('음악\\(BGM\\)') || get('음악') || get('BGM') || '모험').toLowerCase();
-    let bgm = 'adventure';
-    if (/잔잔|차분|평화/.test(bgmText)) bgm = 'calm';
-    else if (/신남|빠른|업비트|즐거/.test(bgmText)) bgm = 'upbeat';
-    else if (/끄기|꺼|off|none/.test(bgmText)) bgm = 'off';
-    return { character, name, winGold, dice, bgm };
+  }
+
+  function parseOpponentLine(text) {
+    const match = text.match(/^- 상대:\s*([^(]+?)(?:\s*\(이미지:\s*([^)]+)\))?\s*$/m);
+    if (!match) return null;
+    const rawName = match[1].trim();
+    const rawImageUrl = match[2]?.trim() || '';
+    const fallback = MARBLE_IP_META[rawName] || MARBLE_IP_META['슬기'];
+    return {
+      name: fallback ? (rawName in MARBLE_IP_META ? rawName : '슬기') : '슬기',
+      imageUrl: resolveMarbleCharacterImageUrl(rawName, rawImageUrl) || fallback?.imageUrl || '',
+      emoji: fallback?.emoji || '🎮',
+      id: fallback?.id || 'seulgi',
+    };
+  }
+
+  function parsePlayers(text, lessonNo) {
+    if (Number(lessonNo) === 1 || Number(lessonNo) === 2) {
+      return parseLessonOnePins(text).map((player, index) => ({
+        name: player.name,
+        imageUrl: '',
+        emoji: '📍',
+        id: player.id,
+        isHuman: index === 0,
+        pinColor: player.color,
+      }));
+    }
+    const hero = parseHeroLine(text) || { name: '데니스', imageUrl: MARBLE_IP_META['데니스'].imageUrl, emoji: '👦', id: 'dennis' };
+    const opponent = parseOpponentLine(text);
+    const aiName = hero.name === '데니스' ? '슬기' : '데니스';
+    const aiMeta = MARBLE_IP_META[aiName];
+    return [
+      { ...hero, isHuman: true },
+      opponent
+        ? { ...opponent, isHuman: false }
+        : { name: aiName, imageUrl: aiMeta.imageUrl, emoji: aiMeta.emoji, id: aiMeta.id, isHuman: false },
+    ];
+  }
+
+  function parseAbilities(text, players) {
+    const abilityByName = new Map();
+    const lines = text.split('\n');
+    let currentName = null;
+    lines.forEach((line) => {
+      const actorMatch = line.match(/-\s*([가-힣A-Za-z0-9]+)(?:\s*\(이미지:[^)]+\))?/);
+      if (actorMatch && MARBLE_IP_META[actorMatch[1].trim()]) currentName = actorMatch[1].trim();
+      const abilityMatch = line.match(/특수 능력\**:\s*(.+)$/);
+      if (!abilityMatch) return;
+      const abilityText = abilityMatch[1].trim();
+      const name = currentName || players[0]?.name;
+      const ability = { abilityText };
+      if (/출발 칸 통과.*\+([\d,]+)골드 추가/.test(abilityText)) {
+        ability.type = 'salary_bonus';
+        ability.amount = numberFromText(abilityText, 0);
+      } else if (/도시.*([0-9]{1,2})% 할인/.test(abilityText)) {
+        const percent = Number((abilityText.match(/([0-9]{1,2})%/) || [])[1] || 0);
+        ability.type = 'city_discount';
+        ability.percent = percent / 100;
+      } else if (/무인도.*-([0-9]+)/.test(abilityText)) {
+        const turns = Number((abilityText.match(/-([0-9]+)/) || [])[1] || 0);
+        ability.type = 'jail_reduction';
+        ability.turns = turns;
+      } else if (/황금카드.*([0-9]+)배/.test(abilityText)) {
+        const factor = Number((abilityText.match(/([0-9]+)배/) || [])[1] || 1);
+        ability.type = 'event_multiplier';
+        ability.factor = factor;
+      }
+      abilityByName.set(name, ability);
+    });
+    return players.map((player) => ({ ...player, ability: abilityByName.get(player.name) || null, abilityText: abilityByName.get(player.name)?.abilityText || '' }));
+  }
+
+  function parseCities(text) {
+    const block = sectionBlock(text, '도시 목록');
+    if (!block) return [];
+    return block
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => /^-\s+/.test(line))
+      .map((line) => {
+        const indexedMatch = line.match(/^-\s*(\d+)\s*칸\s*:\s*(.+?):\s*(.+?)\s*\/\s*([\d,]+)골드/);
+        if (indexedMatch) {
+          return {
+            index: Number(indexedMatch[1]),
+            label: indexedMatch[2].trim(),
+            landmark: indexedMatch[3].trim(),
+            toll: numberFromText(indexedMatch[4], 5000),
+          };
+        }
+        const match = line.match(/^-\s+(.+?):\s*(.+?)\s*\/\s*([\d,]+)골드/);
+        if (!match) return null;
+        return {
+          label: match[1].trim(),
+          landmark: match[2].trim(),
+          toll: numberFromText(match[3], 5000),
+        };
+      })
+      .filter(Boolean);
+  }
+
+  function parseLessonOneCells(text) {
+    const block = sectionBlock(text, '칸 목록') || sectionBlock(text, '보드판 칸');
+    if (!block) return [];
+    return block
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => /^-\s+/.test(line))
+      .map((line, index) => {
+        const match = line.match(/^-\s*(\d+)(?:번)?\s*칸?\s*:\s*([^/]+?)(?:\s*\/\s*(.+))?$/);
+        if (match) {
+          return {
+            index: Number(match[1]),
+            label: match[2].trim(),
+            desc: (match[3] || `${match[2].trim()} 칸이에요.`).trim(),
+          };
+        }
+        const plain = line.match(/^-\s*(.+?)(?:\s*\/\s*(.+))?$/);
+        if (!plain) return null;
+        return {
+          index,
+          label: plain[1].trim(),
+          desc: (plain[2] || `${plain[1].trim()} 칸이에요.`).trim(),
+        };
+      })
+      .filter((cell) => cell && Number.isInteger(cell.index) && cell.index >= 0 && cell.index < 40)
+      .sort((a, b) => a.index - b.index);
+  }
+
+  function parseBoardImage(text) {
+    const match = text.match(/배경:\s*.*이미지:\s*(https?:\/\/[^\s)]+)/);
+    return match ? match[1].trim() : 'https://gongdo-ai-game.vercel.app/에셋_assets/배경_backgrounds/worldmap.png';
+  }
+
+  function parseMarbleRules(text) {
+    const ruleText = sectionBlock(text, '규칙');
+    const salaryMatch = ruleText.match(/출발.*?\+([\d,]+)골드/);
+    const eventMatch = ruleText.match(/황금카드.*?(-?[\d,]+)\s*~\s*\+?([\d,]+)골드/);
+    const taxMatch = ruleText.match(/세금.*?-([\d,]+)골드/);
+    const jailMatch = ruleText.match(/무인도.*?(\d+)턴/);
+    const winLapsMatch = ruleText.match(/\*?(\d+)\s*바퀴 후 가장 부자/);
+    const winGoldMatch = ruleText.match(/([\d,]+)골드.*승리/);
+    const startGoldMatch = text.match(/시작 골드:\s*([\d,]+)골드/);
+    return {
+      startGold: numberFromText(startGoldMatch?.[1], 10000),
+      salary: numberFromText(salaryMatch?.[1], 2000),
+      taxAmount: numberFromText(taxMatch?.[1], 1000),
+      bonusAmount: 2000,
+      eventMin: eventMatch ? numberFromText(eventMatch[1], -2000) : -2000,
+      eventMax: eventMatch ? numberFromText(eventMatch[2], 3000) : 3000,
+      eventStep: 1000,
+      jailTurns: numberFromText(jailMatch?.[1], 3),
+      winLaps: numberFromText(winLapsMatch?.[1], 5),
+      winGold: numberFromText(winGoldMatch?.[1], 50000),
+      tollRate: 0.3,
+      diceCount: 2,
+    };
+  }
+
+  function parseMarbleLessonConfig(text, lessonNo) {
+    const title = (text.match(/^#\s+(.+)$/m) || [])[1] || '모두의 블루마블';
+    const basePlayers = parsePlayers(text, lessonNo);
+    const players = parseAbilities(text, basePlayers);
+    const isLessonOne = Number(lessonNo) === 1;
+    const isPinLesson = Number(lessonNo) === 1 || Number(lessonNo) === 2;
+    const usesCellList = Number(lessonNo) === 1 || Number(lessonNo) === 2;
+    const lessonOneDice = isPinLesson ? parseLessonOneDice(text) : null;
+    return {
+      title: title.replace(/^\d+차시\s*[^\s]+\s*/, '').trim(),
+      board: {
+        backgroundImageUrl: parseBoardImage(text),
+        backgroundColor: isPinLesson ? parseLessonOneBoardColor(text) : '#D8C6A4',
+      },
+      rules: parseMarbleRules(text),
+      cities: isLessonOne ? [] : parseCities(text),
+      lessonOneCells: usesCellList ? parseLessonOneCells(text) : [],
+      players,
+      bgm: { kind: 'adventure' },
+      dice: lessonOneDice || { label: '기본 주사위', emoji: '🎲', theme: 'classic' },
+      ui: {
+        hideHud: isLessonOne,
+        hideTokens: false,
+        showCoordinates: isPinLesson,
+        usePinTokens: isPinLesson,
+        simpleBoard: isLessonOne,
+        disableCellEffects: isLessonOne,
+        disableWin: isLessonOne,
+      },
+    };
+  }
+
+  async function resolveLessonOneDiceWithClaude(sourceText) {
+    try {
+      const data = await callChatApi({ document: sourceText, mode: 'dice' });
+      if (data?.dice && typeof data.dice === 'object') return data.dice;
+    } catch (_) {
+      // 로컬 파서 fallback
+    }
+    return null;
+  }
+
+  async function resolveLessonOnePinColorsWithClaude(sourceText) {
+    try {
+      const data = await callChatApi({ document: sourceText, mode: 'pin_colors' });
+      if (Array.isArray(data?.pins) && data.pins.length) return data.pins;
+    } catch (_) {
+      // 로컬 파서 fallback
+    }
+    return null;
+  }
+
+  async function resolveLessonOneBoardColorWithClaude(sourceText) {
+    try {
+      const data = await callChatApi({ document: sourceText, mode: 'board_color' });
+      if (data?.board?.backgroundColor) return data.board.backgroundColor;
+    } catch (_) {
+      // 로컬 파서 fallback
+    }
+    return null;
+  }
+
+  function isLessonDocumentModified() {
+    const editorText = ($('#editor-textarea')?.value || '').trim();
+    const loadedText = String(state.lessonCache.get(state.currentLessonFile) || '').trim();
+    return !!editorText && !!loadedText && editorText !== loadedText;
+  }
+
+  function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  async function buildPatchedMarbleHtml(sourceText, lessonNo, options = {}) {
+    const res = await fetch(MARBLE_TEMPLATE_PATH, { cache: 'no-store' });
+    if (!res.ok) throw new Error('블루마블 템플릿 로딩 실패');
+    const template = await res.text();
+    const config = parseMarbleLessonConfig(sourceText, lessonNo);
+    if ((Number(lessonNo) === 1 || Number(lessonNo) === 2) && options.useAiDice) {
+      const diceFromClaude = await resolveLessonOneDiceWithClaude(sourceText);
+      if (diceFromClaude) config.dice = { ...config.dice, ...diceFromClaude };
+    }
+    if ((Number(lessonNo) === 1 || Number(lessonNo) === 2) && options.useAiPins) {
+      const pinsFromClaude = await resolveLessonOnePinColorsWithClaude(sourceText);
+      if (pinsFromClaude) {
+        config.players = config.players.map((player, index) => ({
+          ...player,
+          pinColor: pinsFromClaude[index]?.color || player.pinColor,
+        }));
+      }
+    }
+    if ((Number(lessonNo) === 1 || Number(lessonNo) === 2) && options.useAiBoardColor) {
+      const boardColorFromClaude = await resolveLessonOneBoardColorWithClaude(sourceText);
+      if (boardColorFromClaude) config.board.backgroundColor = boardColorFromClaude;
+    }
+    const injected = `<base href="${MARBLE_TEMPLATE_BASE}"><script>window.__GONGDO_MARBLE_CONFIG__=${JSON.stringify(config)};</script>`;
+    return template.replace(/<head>/i, `<head>${injected}`);
   }
 
   async function handleStartClick() {
@@ -359,26 +722,32 @@
     // 학생이 [시작]을 직접 눌렀음 → attention 안내 종료
     clearStartButtonAttention();
 
-    // 1차시 (모두의 블루마블): AI 호출 없이 정적 게임 로드
-    // 학생이 문서에서 바꾼 설정 5종을 파싱하여 URL 파라미터로 게임에 주입.
-    if (state.currentLesson === 1) {
-      const settings = parseBluemarbleSettings(editor.value);
-      const params = new URLSearchParams();
-      params.set('character', settings.character);
-      if (settings.name) params.set('name', settings.name);
-      params.set('winGold', String(settings.winGold));
-      params.set('dice', String(settings.dice));
-      params.set('bgm', settings.bgm);
-      const baseUrl = './에셋_assets/샘플게임_samples/bluemarble/index.html';
-      launchGame(`${baseUrl}?${params.toString()}`);
-      const displayName = settings.name || (settings.character === 'seulgi' ? '슬기' : '데니스');
-      $('#game-status').textContent = `🎲 모두의 블루마블 — ${displayName}(으)로 출발!`;
-      // [🔍 코드 구경] 패널용 HTML 본문 fetch (URL 파라미터 없이 원본만)
-      const sourceText = editor.value;
-      fetch(baseUrl).then((r) => r.text()).then((html) => {
+    if (state.currentLesson >= 1 && state.currentLesson <= 4) {
+      showGeneratingModal();
+      try {
+        const isPinLesson = Number(state.currentLesson) === 1 || Number(state.currentLesson) === 2;
+        const useAiDice = isPinLesson && isLessonDocumentModified();
+        const useAiPins = isPinLesson && isLessonDocumentModified();
+        const useAiBoardColor = isPinLesson && isLessonDocumentModified();
+        const [html] = await Promise.all([
+          buildPatchedMarbleHtml(editor.value, state.currentLesson, { useAiDice, useAiPins, useAiBoardColor }),
+          wait(5000),
+        ]);
         state.lastGeneratedHtml = html;
-        state.lastGeneratedHtmlSnapshot = { html, sourceText };
-      }).catch(() => { /* 코드 구경 미사용 시 무시 */ });
+        state.lastGeneratedHtmlSnapshot = { html, sourceText: editor.value };
+        state.promptHistory.push({
+          at: new Date().toISOString(),
+          lessonNo: state.currentLesson,
+          document: editor.value.slice(0, 3000),
+        });
+        launchGame(html);
+        $('#game-status').textContent = `🎲 ${state.currentLesson}차시 모두의 블루마블을 기존 코드 기반으로 업데이트했어요!`;
+      } catch (err) {
+        console.error(err);
+        $('#game-status').textContent = '⚠️ 블루마블 템플릿을 업데이트하지 못했어요.';
+      } finally {
+        hideGeneratingModal();
+      }
       return;
     }
 

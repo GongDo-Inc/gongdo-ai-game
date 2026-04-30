@@ -44,6 +44,7 @@
   .hud-chip.turn{background:var(--color-red);color:var(--color-cream)}
   .hud-chip.turn.is-ai{background:var(--color-blue)}
   .hud-spacer{flex:1}
+  .hud-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 
   .arena{
     flex:1;position:relative;overflow:hidden;
@@ -56,7 +57,8 @@
      상하 일부 크롭되지만 보드 그림은 이미지 중앙이라 안전. 좌표는 .board 기준 % */
   .board{
     position:absolute; inset:0;
-    background-image:url('../../배경_backgrounds/worldmap.png');
+    background-color:var(--board-color, #d8c6a4);
+    background-image:var(--board-bg, url('../../배경_backgrounds/worldmap.png'));
     background-size:cover;
     background-position:center center;
     background-repeat:no-repeat;
@@ -75,6 +77,23 @@
     background:rgba(255,248,236,.25);
     border-color:rgba(26,26,26,.45);
   }
+  .cell.show-coordinates{
+    width:4.8%;
+    border-color:rgba(26,26,26,.35);
+    background:rgba(255,248,236,.85);
+    box-shadow:1px 1px 0 rgba(26,26,26,.35);
+  }
+  .cell-index{
+    position:absolute;left:50%;top:50%;
+    transform:translate(-50%,-50%);
+    min-width:18px;height:18px;padding:0 4px;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:999px;
+    background:var(--color-yellow);
+    border:2px solid var(--color-black);
+    color:var(--color-black);
+    font-size:10px;font-weight:800;line-height:1;
+  }
   .cell.is-current::after{
     content:'';position:absolute;inset:-4px;border-radius:50%;
     border:3px solid var(--color-blue);
@@ -88,7 +107,7 @@
 
   /* 토큰 (캐릭터 말) — 캐릭터 핀 이미지 사용 */
   .token{
-    position:absolute;width:54px;height:54px;
+    position:absolute;width:60px;height:60px;
     background-size:contain;background-position:center bottom;background-repeat:no-repeat;
     /* 카툰 그림자 (이미지 발 밑) */
     filter:drop-shadow(2px 2px 0 var(--color-black));
@@ -114,6 +133,38 @@
     background-image:none;
     z-index:3;
   }
+  .token.pin-token{
+    width:30px;height:30px;
+    border-radius:50% 50% 50% 0;
+    border:2px solid var(--color-black);
+    transform:translate(-50%,-50%) rotate(-45deg);
+    background:var(--pin-color, var(--color-red));
+    display:flex;align-items:center;justify-content:center;
+    color:var(--color-cream);
+    font-size:14px;font-weight:800;
+    filter:drop-shadow(2px 2px 0 var(--color-black));
+  }
+  .token.pin-token .pin-inner{
+    transform:rotate(45deg);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .token.pin-token .token-name{
+    top:calc(100% + 14px);
+  }
+  .roll-btn .roll-emoji{
+    font-size:22px;line-height:1;
+    display:inline-flex;align-items:center;justify-content:center;
+  }
+  .roll-btn.theme-star{
+    background:#F7C548;
+    color:var(--color-black);
+  }
+  .roll-btn.theme-heart{
+    background:#F48FA0;
+  }
+  .roll-btn.theme-lightning{
+    background:#F28C28;
+  }
   .token.is-hopping{animation:token-hop .28s var(--ease)}
   @keyframes token-hop{
     0%{margin-top:0}
@@ -125,7 +176,6 @@
     background:var(--color-black);color:var(--color-cream);
     padding:1px 6px;border-radius:4px;font-size:10px;line-height:1.3;white-space:nowrap;
   }
-
   /* ── 주사위 버튼 ──────────────────────────────────────── */
   .roll-btn{
     position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
@@ -178,12 +228,44 @@
   .dice-pair{display:flex;gap:14px;perspective:300px;margin:6px 0}
   .die{
     width:72px;height:72px;
-    object-fit:contain;
-    /* 이미지 자체에 카툰 외곽선이 있으므로 보더/배경/그림자 없음 */
-    background:transparent;border:0;border-radius:0;box-shadow:none;
-    display:block;
+    position:relative;
+    display:flex;align-items:center;justify-content:center;
+    border:3px solid var(--color-black);
+    border-radius:20px;
+    background:var(--color-cream);
+    box-shadow:var(--shadow-toon-sm);
+    font-family:var(--font-display);
+  }
+  .die-face{
+    position:relative;z-index:2;
+    font-size:28px;font-weight:800;line-height:1;
+    color:var(--color-black);
+  }
+  .die-shape{
+    position:absolute;inset:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:42px;line-height:1;
+    opacity:.28;
+  }
+  .die.theme-classic{
+    background:var(--color-cream);
+  }
+  .die.theme-star{
+    background:#FFF1B8;
+    clip-path:polygon(50% 2%,61% 35%,98% 35%,68% 57%,79% 94%,50% 72%,21% 94%,32% 57%,2% 35%,39% 35%);
+  }
+  .die.theme-heart{
+    background:#FFD6E5;
+    clip-path:path('M 36 66 C 10 50 0 31 0 18 C 0 7 9 0 18 0 C 26 0 32 5 36 12 C 40 5 46 0 54 0 C 63 0 72 7 72 18 C 72 31 62 50 36 66 Z');
+  }
+  .die.theme-lightning{
+    background:#FFE1A8;
+    clip-path:polygon(46% 0,77% 0,57% 34%,83% 34%,30% 100%,42% 54%,18% 54%);
   }
   .die.is-rolling{animation:die-roll .9s var(--ease)}
+  .die.theme-star{filter:drop-shadow(0 0 10px rgba(247,197,72,.75))}
+  .die.theme-heart{filter:drop-shadow(0 0 10px rgba(244,143,160,.75))}
+  .die.theme-lightning{filter:drop-shadow(0 0 10px rgba(242,140,40,.75))}
   @keyframes die-roll{
     0%{transform:rotateX(0) rotateY(0)}
     100%{transform:rotateX(1440deg) rotateY(1080deg)}
@@ -230,14 +312,7 @@
 <body>
 <div class="stage" id="stage">
   <!-- 상단 HUD -->
-  <div class="hud">
-    <span class="hud-chip" id="label-p0">🎭 데니스</span>
-    <span class="hud-chip gold" id="gold-p0">🪙 10,000</span>
-    <span class="hud-chip" id="label-p1">🎀 슬기</span>
-    <span class="hud-chip gold" id="gold-p1">🪙 10,000</span>
-    <span class="hud-spacer"></span>
-    <span class="hud-chip turn" id="turn-chip">▶ 데니스 차례</span>
-  </div>
+  <div class="hud" id="hud"></div>
 
   <!-- 게임 영역 -->
   <div class="arena" id="arena">
@@ -245,7 +320,8 @@
       <!-- cells & tokens injected here -->
     </div>
     <button class="roll-btn" id="roll-btn">
-      <span>주사위 굴리기</span>
+      <span class="roll-emoji" id="roll-emoji">🎲</span>
+      <span id="roll-label">주사위 굴리기</span>
     </button>
     <div class="toast" id="toast"></div>
   </div>
@@ -255,13 +331,7 @@
 (function(){
   'use strict';
 
-  // ── 셀 정의 ─────────────────────────────────────────────
-  // worldmap.png 위에 그려진 보드 트랙(24칸)에 맞춘 좌표(% 단위).
-  // 0: 출발(상단 깃발) → 시계방향 → 23: 출발 직전 좌측칸.
-  // 위치 미세조정이 필요하면 이 배열만 수정.
-  // 40칸: 4 코너 + 한 변에 9칸씩(=36) → 시계방향
-  // 좌표는 보드 중심(50,50) 기준 바깥쪽으로 ~0.5%(약 5px) 오프셋 적용
-  const CELLS = [
+  const DEFAULT_CELLS = [
     // 0  N corner — 출발
     { x:50.0, y:29.5, type:'start',  label:'출발',           ico:'🚩', desc:'한 바퀴 돌면 월급 +2,000골드!' },
     // 1-9  N → E (perp 방향: +0.3x, -0.4y)
@@ -312,118 +382,327 @@
     { x:47.1, y:31.6, type:'city',   label:'런던',           ico:'🎡', desc:'안개와 빅벤의 도시.' },
   ];
 
-  // ── URL 파라미터 (학생이 lesson1.md 에서 설정한 값) ──────
-  const params = new URLSearchParams(location.search);
-  const HUMAN_ID = params.get('character') === 'seulgi' ? 'seulgi' : 'dennis';
-  // AI는 항상 같은 식별자/이름 ('ai') — 학생이 선택한 캐릭터와 별개의 로봇 친구
-  const AI_ID = 'ai';
-  const HUMAN_NAME = (params.get('name') || '').slice(0, 12)
-    || (HUMAN_ID === 'dennis' ? '데니스' : '슬기');
-  const AI_NAME = 'AI 친구';
-  const WIN_GOLD = Math.max(1000, Math.min(999999, parseInt(params.get('winGold'), 10) || 50000));
-  const DICE_COUNT = Math.max(1, Math.min(3, parseInt(params.get('dice'), 10) || 2));
-  const BGM_KIND = params.get('bgm') || 'adventure';
-  const SALARY = 2000;
+  const DEFAULT_CITY_DATA = DEFAULT_CELLS
+    .map((cell, idx) => ({ cell, idx }))
+    .filter(({ cell }) => cell.type === 'city')
+    .map(({ cell, idx }) => ({
+      index: idx,
+      label: cell.label,
+      landmark: cell.desc,
+      toll: 1500 + idx * 200,
+      ico: cell.ico,
+    }));
 
-  // ── 상태 ──────────────────────────────────────────────
-  // players[0] = 인간(human), players[1] = AI 로 정렬
+  const DEFAULT_PLAYERS = [
+    { id:'dennis', name:'데니스', imageUrl:'https://gongdo-ai-game.vercel.app/에셋_assets/캐릭터_characters/archive/dennis.png', emoji:'👦', isHuman:true },
+    { id:'seulgi', name:'슬기', imageUrl:'https://gongdo-ai-game.vercel.app/에셋_assets/캐릭터_characters/archive/seulgi.png', emoji:'👧', isHuman:false },
+  ];
+
+  const params = new URLSearchParams(location.search);
+  let injectedConfig = {};
+  try {
+    injectedConfig = window.__GONGDO_MARBLE_CONFIG__ || {};
+  } catch (_) {
+    injectedConfig = {};
+  }
+
+  const CONFIG = normalizeConfig(injectedConfig, params);
+  document.documentElement.style.setProperty('--board-bg', `url('${CONFIG.board.backgroundImageUrl}')`);
+  document.documentElement.style.setProperty('--board-color', CONFIG.board.backgroundColor || '#D8C6A4');
+  const CELLS = buildCells(DEFAULT_CELLS, CONFIG);
+
   const state = {
-    players: [
-      { id:HUMAN_ID, name:HUMAN_NAME, pos:0, gold:10000, jailTurns:0, isHuman:true  },
-      { id:AI_ID,    name:AI_NAME,    pos:0, gold:10000, jailTurns:0, isHuman:false },
-    ],
-    turn: HUMAN_ID,   // 인간이 먼저
+    players: CONFIG.players.map((player, index) => ({
+      ...player,
+      pos: 0,
+      gold: CONFIG.rules.startGold,
+      jailTurns: 0,
+      laps: 0,
+      index,
+    })),
+    turnIndex: 0,
     busy: false,
     aiAuto: true,
     winner: null,
+    finishReason: null,
   };
 
-  // 주사위 PNG (1~6) — 미리 캐시해서 flicker 시 깜빡임 방지
   const diceImg = (n) => `../../도구_tools/dice/dice-${n}.png`;
   for (let n = 1; n <= 6; n++) { const im = new Image(); im.src = diceImg(n); }
 
-  // ── DOM 헬퍼 ──────────────────────────────────────────
   const $ = (sel) => document.querySelector(sel);
+  const hud = $('#hud');
   const board = $('#board');
   const rollBtn = $('#roll-btn');
+  const rollEmoji = $('#roll-emoji');
+  const rollLabel = $('#roll-label');
   const toastEl = $('#toast');
-  const turnChip = $('#turn-chip');
 
-  // ── 셀 렌더링 ────────────────────────────────────────
-  CELLS.forEach((c, i) => {
-    const el = document.createElement('div');
-    el.className = `cell type-${c.type}`;
-    el.dataset.idx = i;
-    el.style.left = c.x + '%';
-    el.style.top = c.y + '%';
-    el.title = `${i}. ${c.label}`;
-    el.addEventListener('click', () => showCellInfo(i));
-    board.appendChild(el);
-  });
+  function numberOr(value, fallback) {
+    return Number.isFinite(Number(value)) ? Number(value) : fallback;
+  }
 
-  // ── 토큰 위치 계산 헬퍼 ────────────────────────────
-  // 각 칸 기준 바깥쪽(보드 중심 기준)으로 약 5px 오프셋.
-  // 변(side)에는 변에 수직, 코너는 카디널 방향.
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function formatSigned(num) {
+    const value = Number(num) || 0;
+    return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
+  }
+
+  function normalizeConfig(rawConfig, query) {
+    const config = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
+    const queryName = query.get('name');
+    const queryWinGold = parseInt(query.get('winGold'), 10);
+    const queryDice = parseInt(query.get('dice'), 10);
+    const queryBgm = query.get('bgm');
+    const players = (Array.isArray(config.players) && config.players.length ? config.players : DEFAULT_PLAYERS)
+      .slice(0, 2)
+      .map((player, index) => {
+        const fallback = DEFAULT_PLAYERS[index] || DEFAULT_PLAYERS[0];
+        return {
+          id: String(player.id || fallback.id || `p${index}`),
+          name: String(player.name || fallback.name || `플레이어 ${index + 1}`).slice(0, 14),
+          imageUrl: player.imageUrl || fallback.imageUrl || '',
+          emoji: player.emoji || fallback.emoji || '🎮',
+          pinColor: player.pinColor || '',
+          ability: player.ability || null,
+          abilityText: player.abilityText || '',
+          isHuman: index === 0,
+        };
+      });
+    if (queryName && players[0]) players[0].name = queryName.slice(0, 14);
+    return {
+      title: config.title || '모두의 블루마블',
+      board: {
+        backgroundImageUrl: config.board?.backgroundImageUrl
+          || 'https://gongdo-ai-game.vercel.app/에셋_assets/배경_backgrounds/worldmap.png',
+        backgroundColor: config.board?.backgroundColor || '#D8C6A4',
+      },
+      rules: {
+        startGold: numberOr(config.rules?.startGold, 10000),
+        salary: numberOr(config.rules?.salary, 2000),
+        taxAmount: numberOr(config.rules?.taxAmount, 1000),
+        bonusAmount: numberOr(config.rules?.bonusAmount, 2000),
+        eventMin: numberOr(config.rules?.eventMin, -2000),
+        eventMax: numberOr(config.rules?.eventMax, 3000),
+        eventStep: numberOr(config.rules?.eventStep, 1000),
+        jailTurns: numberOr(config.rules?.jailTurns, 3),
+        winGold: Number.isFinite(queryWinGold) ? queryWinGold : numberOr(config.rules?.winGold, 50000),
+        winLaps: numberOr(config.rules?.winLaps, 5),
+        tollRate: numberOr(config.rules?.tollRate, 0.3),
+        diceCount: Number.isFinite(queryDice) ? clamp(queryDice, 1, 3) : clamp(numberOr(config.rules?.diceCount, 2), 1, 3),
+      },
+      bgm: {
+        kind: queryBgm || config.bgm?.kind || 'adventure',
+      },
+      dice: {
+        label: String(config.dice?.label || '기본 주사위').slice(0, 24),
+        emoji: String(config.dice?.emoji || '🎲').slice(0, 4),
+        theme: String(config.dice?.theme || 'classic'),
+      },
+      cities: Array.isArray(config.cities) && config.cities.length ? config.cities : DEFAULT_CITY_DATA,
+      lessonOneCells: Array.isArray(config.lessonOneCells) ? config.lessonOneCells : [],
+      players,
+      ui: {
+        hideHud: !!config.ui?.hideHud,
+        hideTokens: !!config.ui?.hideTokens,
+        showCoordinates: !!config.ui?.showCoordinates,
+        usePinTokens: !!config.ui?.usePinTokens,
+        simpleBoard: !!config.ui?.simpleBoard,
+        disableCellEffects: !!config.ui?.disableCellEffects,
+        disableWin: !!config.ui?.disableWin,
+      },
+    };
+  }
+
+  function buildCells(defaultCells, config) {
+    if (config.ui?.simpleBoard) {
+      document.documentElement.style.setProperty('--board-bg', 'none');
+      const customCells = new Map((config.lessonOneCells || []).map((cell) => [cell.index, cell]));
+      return defaultCells.map((cell, index) => {
+        const custom = customCells.get(index);
+        const label = custom?.label || `${index}번 칸`;
+        const desc = custom?.desc || `${label} 칸이에요.`;
+        return {
+          ...cell,
+          type: 'plain',
+          label,
+          ico: '📍',
+          desc,
+          ownerId: null,
+          price: 0,
+        };
+      });
+    }
+    const next = defaultCells.map((cell) => ({ ...cell, ownerId: null, price: cell.price || 0, toll: cell.toll || 0 }));
+    const customCells = new Map((config.lessonOneCells || []).map((cell) => [cell.index, cell]));
+    next.forEach((cell, index) => {
+      const custom = customCells.get(index);
+      if (!custom) return;
+      cell.label = custom.label || cell.label;
+      if (custom.desc) cell.desc = custom.desc;
+    });
+    const cityIndexes = next.reduce((acc, cell, index) => {
+      if (cell.type === 'city') acc.push(index);
+      return acc;
+    }, []);
+    const indexedSources = config.cities.filter((city) => Number.isInteger(city.index));
+    const freeSources = config.cities.filter((city) => !Number.isInteger(city.index));
+    indexedSources.forEach((source) => {
+      const cell = next[source.index];
+      if (!cell) return;
+      const landmark = source.landmark || source.desc || cell.desc;
+      cell.type = 'city';
+      cell.label = source.label || cell.label;
+      cell.ico = source.ico || cell.ico || '🏙️';
+      cell.toll = numberOr(source.toll, 1500);
+      cell.price = numberOr(source.price, cell.toll * 3);
+      cell.landmark = landmark;
+      cell.desc = `${landmark} · 통행세 ${cell.toll.toLocaleString()}골드`;
+    });
+    cityIndexes.forEach((cellIndex, order) => {
+      const source = freeSources[order];
+      if (!source) return;
+      const cell = next[cellIndex];
+      const landmark = source.landmark || source.desc || cell.desc;
+      cell.label = source.label || cell.label;
+      cell.ico = source.ico || cell.ico;
+      cell.toll = numberOr(source.toll, 1500 + order * 200);
+      cell.price = numberOr(source.price, cell.toll * 3);
+      cell.landmark = landmark;
+      cell.desc = `${landmark} · 통행세 ${cell.toll.toLocaleString()}골드`;
+    });
+    next.forEach((cell) => {
+      if (cell.type === 'event') cell.desc = `랜덤 ${formatSigned(config.rules.eventMin)} ~ ${formatSigned(config.rules.eventMax)}골드`;
+      if (cell.type === 'tax') cell.desc = `세금 -${config.rules.taxAmount.toLocaleString()}골드`;
+      if (cell.type === 'bonus') cell.desc = `보너스 +${config.rules.bonusAmount.toLocaleString()}골드`;
+      if (cell.type === 'jail') cell.desc = `무인도! ${config.rules.jailTurns}턴 동안 주사위를 못 굴려요.`;
+      if (cell.type === 'start') cell.desc = `한 바퀴 돌면 월급 +${config.rules.salary.toLocaleString()}골드!`;
+    });
+    return next;
+  }
+
   function getCellOutward(idx) {
-    if (idx === 0)  return { dx:  0, dy: -5 };  // N corner
-    if (idx === 10) return { dx:  5, dy:  0 };  // E corner
-    if (idx === 20) return { dx:  0, dy:  5 };  // S corner
-    if (idx === 30) return { dx: -5, dy:  0 };  // W corner
-    if (idx >= 1  && idx <= 9 ) return { dx:  3, dy: -4 };  // N→E
-    if (idx >= 11 && idx <= 19) return { dx:  3, dy:  4 };  // E→S
-    if (idx >= 21 && idx <= 29) return { dx: -3, dy:  4 };  // S→W
-    return { dx: -3, dy: -4 };  // W→N (31..39)
+    if (idx === 0) return { dx: 0, dy: -5 };
+    if (idx === 10) return { dx: 5, dy: 0 };
+    if (idx === 20) return { dx: 0, dy: 5 };
+    if (idx === 30) return { dx: -5, dy: 0 };
+    if (idx >= 1 && idx <= 9) return { dx: 3, dy: -4 };
+    if (idx >= 11 && idx <= 19) return { dx: 3, dy: 4 };
+    if (idx >= 21 && idx <= 29) return { dx: -3, dy: 4 };
+    return { dx: -3, dy: -4 };
+  }
+
+  function renderCells() {
+    CELLS.forEach((cell, index) => {
+      const el = document.createElement('div');
+      el.className = `cell type-${cell.type}`;
+      if (CONFIG.ui.showCoordinates) el.classList.add('show-coordinates');
+      el.dataset.idx = index;
+      el.style.left = `${cell.x}%`;
+      el.style.top = `${cell.y}%`;
+      el.title = `${index}. ${cell.label}`;
+      if (CONFIG.ui.showCoordinates) {
+        const badge = document.createElement('span');
+        badge.className = 'cell-index';
+        badge.textContent = String(index);
+        el.appendChild(badge);
+      }
+      el.addEventListener('click', () => showCellInfo(index));
+      board.appendChild(el);
+    });
+  }
+
+  function renderHud() {
+    if (CONFIG.ui.hideHud) {
+      hud.innerHTML = '';
+      hud.style.display = 'none';
+      return;
+    }
+    hud.style.display = '';
+    hud.innerHTML = '';
+    const group = document.createElement('div');
+    group.className = 'hud-group';
+    state.players.forEach((player, index) => {
+      const label = document.createElement('span');
+      label.className = 'hud-chip';
+      label.id = `label-p${index}`;
+      label.textContent = `${player.emoji || '🎮'} ${player.name}${player.isHuman ? ' (나)' : ''}`;
+      const gold = document.createElement('span');
+      gold.className = 'hud-chip gold';
+      gold.id = `gold-p${index}`;
+      group.appendChild(label);
+      group.appendChild(gold);
+    });
+    const spacer = document.createElement('span');
+    spacer.className = 'hud-spacer';
+    const turn = document.createElement('span');
+    turn.className = 'hud-chip turn';
+    turn.id = 'turn-chip';
+    hud.appendChild(group);
+    hud.appendChild(spacer);
+    hud.appendChild(turn);
   }
 
   function placeToken(tokenEl, player) {
-    const idx = state.players.findIndex(p => p.id === player.id);
     const cell = CELLS[player.pos];
     const out = getCellOutward(player.pos);
-    // 같은 칸 두 명 분리 (-10/+10) + 바깥쪽 오프셋 (out.dx/out.dy)
-    const lateral = (idx === 0 ? -10 : 10);
-    tokenEl.style.left = `calc(${cell.x}% + ${lateral + out.dx}px)`;
-    tokenEl.style.top  = `calc(${cell.y}% + ${out.dy}px)`;
+    const lateralOffsets = [-16, 16, -8, 8];
+    const verticalOffsets = [-6, -6, 10, 10];
+    tokenEl.style.left = `calc(${cell.x}% + ${(lateralOffsets[player.index] || 0) + out.dx + 5}px)`;
+    tokenEl.style.top = `calc(${cell.y}% + ${(verticalOffsets[player.index] || 0) + out.dy}px)`;
   }
 
-  // ── 토큰 렌더링 ──────────────────────────────────────
   function renderTokens() {
-    board.querySelectorAll('.token').forEach(t => t.remove());
-    state.players.forEach((p) => {
+    board.querySelectorAll('.token').forEach((token) => token.remove());
+    if (CONFIG.ui.hideTokens) {
+      document.querySelectorAll('.cell').forEach((c) => c.classList.remove('is-current'));
+      return;
+    }
+    state.players.forEach((player) => {
       const el = document.createElement('div');
-      el.className = `token ${p.id}`;
-      el.id = `token-${p.id}`;
-      el.setAttribute('aria-label', p.name);
-      // AI는 이미지가 없으므로 로봇 이모지 텍스트로 표시
-      if (p.id === 'ai') el.textContent = '🤖';
+      el.className = `token ${player.id}`;
+      if (CONFIG.ui.usePinTokens) el.classList.add('pin-token');
+      el.id = `token-${player.id}`;
+      el.setAttribute('aria-label', player.name);
+      if (CONFIG.ui.usePinTokens) {
+        el.style.setProperty('--pin-color', player.pinColor || (player.isHuman ? 'var(--color-red)' : 'var(--color-blue)'));
+        const pinInner = document.createElement('span');
+        pinInner.className = 'pin-inner';
+        pinInner.textContent = player.isHuman ? '1' : '2';
+        el.appendChild(pinInner);
+      } else if (player.imageUrl) {
+        el.style.backgroundImage = `url('${player.imageUrl}')`;
+      } else {
+        el.textContent = player.emoji || '🎮';
+      }
       const name = document.createElement('span');
       name.className = 'token-name';
-      name.textContent = p.name;
+      name.textContent = player.name;
       el.appendChild(name);
       board.appendChild(el);
-      placeToken(el, p);
+      placeToken(el, player);
     });
-    // 현재 차례 셀 강조
-    document.querySelectorAll('.cell').forEach(c => c.classList.remove('is-current'));
+    document.querySelectorAll('.cell').forEach((c) => c.classList.remove('is-current'));
   }
-  renderTokens();
-
-  // 인간/AI 라벨 1회 세팅
-  const ICO = { dennis:'🎭', seulgi:'🎀', ai:'🤖' };
-  $('#label-p0').textContent = `${ICO[state.players[0].id] || '🎮'} ${state.players[0].name}` + (state.players[0].isHuman ? ' (나)' : '');
-  $('#label-p1').textContent = `${ICO[state.players[1].id] || '🎮'} ${state.players[1].name}` + (state.players[1].isHuman ? ' (나)' : '');
 
   function updateHud() {
-    $('#gold-p0').textContent = '🪙 ' + state.players[0].gold.toLocaleString();
-    $('#gold-p1').textContent = '🪙 ' + state.players[1].gold.toLocaleString();
-    const cur = state.players.find(p => p.id === state.turn);
-    const isAI = cur && !cur.isHuman;
-    turnChip.textContent = `▶ ${cur ? cur.name : ''} 차례`;
-    turnChip.classList.toggle('is-ai', !!isAI);
+    state.players.forEach((player, index) => {
+      const gold = document.getElementById(`gold-p${index}`);
+      if (gold) gold.textContent = `🪙 ${player.gold.toLocaleString()}`;
+    });
+    const current = state.players[state.turnIndex];
+    const turnChip = document.getElementById('turn-chip');
+    const isAI = current && !current.isHuman;
+    if (turnChip) {
+      turnChip.textContent = `▶ ${current ? current.name : ''} 차례`;
+      turnChip.classList.toggle('is-ai', !!isAI);
+    }
     rollBtn.disabled = state.busy || !!state.winner || isAI;
   }
-  updateHud();
 
-  // ── 토스트 ──────────────────────────────────────────
   let toastTimer = null;
   function toast(msg) {
     toastEl.textContent = msg;
@@ -432,7 +711,6 @@
     toastTimer = setTimeout(() => toastEl.classList.remove('is-shown'), 2200);
   }
 
-  // ── 모달 ────────────────────────────────────────────
   function openModal(buildFn) {
     const overlay = document.createElement('div');
     overlay.className = 'overlay';
@@ -442,22 +720,23 @@
     document.body.appendChild(overlay);
     const close = () => overlay.remove();
     buildFn(modal, close);
-    return { overlay, modal, close };
+    return { close };
   }
 
-  // ── 셀 정보 카드 ───────────────────────────────────
   function showCellInfo(idx) {
     const c = CELLS[idx];
     openModal((m, close) => {
       const typeLabel = ({
         start:'출발', city:'도시', event:'황금카드', tax:'세금',
         travel:'여행', jail:'무인도', space:'우주여행', bonus:'사회복지',
+        plain:'기본 칸',
       })[c.type] || c.type;
+      const owner = c.ownerId ? state.players.find((player) => player.id === c.ownerId) : null;
       m.innerHTML = `
         <div class="cell-info-emoji">${c.ico}</div>
         <div class="cell-info-type">${typeLabel} · ${idx}번 칸</div>
         <h2>${c.label}</h2>
-        <div class="cell-info-effect">${c.desc}</div>`;
+        <div class="cell-info-effect">${c.desc}${owner ? `<br>소유자: ${owner.name}` : ''}</div>`;
       const btn = document.createElement('button');
       btn.className = 'btn ghost';
       btn.textContent = '닫기';
@@ -466,185 +745,124 @@
     });
   }
 
-  // ── 주사위 모달 (1~3개 지원) ───────────────────────
   function openDiceModal(player, onResult) {
     openModal((m, close) => {
       let phase = 'ready';
-      const dice = Array(DICE_COUNT).fill(1);
-
-      const dicePairHtml = dice.map((v, i) =>
-        `<img class="die" id="d${i}" src="${diceImg(v)}" alt="주사위 ${v}">`
-      ).join('');
-
+      const dice = Array(CONFIG.rules.diceCount).fill(1);
+      const diceHtml = dice.map((v, i) => `
+        <div class="die theme-${CONFIG.dice.theme}" id="d${i}" aria-label="주사위 ${v}">
+          <span class="die-shape" aria-hidden="true">${CONFIG.dice.emoji}</span>
+          <span class="die-face">${v}</span>
+        </div>
+      `).join('');
       m.innerHTML = `
-        <h2>${player.name}의 주사위!</h2>
-        <div class="dice-pair">${dicePairHtml}</div>
+        <h2>${CONFIG.dice.emoji} ${player.name}의 ${CONFIG.dice.label}!</h2>
+        <div class="dice-pair">${diceHtml}</div>
         <div class="dice-result" id="dr">주사위를 굴려보자!</div>
       `;
       const btn = document.createElement('button');
       btn.className = 'btn';
       btn.textContent = '굴리기';
       m.appendChild(btn);
-
       const dieEls = dice.map((_, i) => m.querySelector(`#d${i}`));
       const dr = m.querySelector('#dr');
-
+      const setDieFace = (dieEl, value) => {
+        if (!dieEl) return;
+        const face = dieEl.querySelector('.die-face');
+        if (face) face.textContent = String(value);
+        dieEl.setAttribute('aria-label', `주사위 ${value}`);
+      };
       const roll = () => {
         if (phase !== 'ready') return;
         phase = 'rolling';
         btn.disabled = true;
-        dieEls.forEach(d => d.classList.add('is-rolling'));
+        dieEls.forEach((die) => die.classList.add('is-rolling'));
         dr.textContent = '굴리는 중…';
         const flicker = setInterval(() => {
-          dieEls.forEach(d => { d.src = diceImg(1 + Math.floor(Math.random()*6)); });
+          dieEls.forEach((die) => { setDieFace(die, 1 + Math.floor(Math.random() * 6)); });
         }, 80);
         setTimeout(() => {
           clearInterval(flicker);
           for (let i = 0; i < dice.length; i++) {
-            dice[i] = 1 + Math.floor(Math.random()*6);
-            dieEls[i].src = diceImg(dice[i]);
-            dieEls[i].alt = `주사위 ${dice[i]}`;
+            dice[i] = 1 + Math.floor(Math.random() * 6);
+            setDieFace(dieEls[i], dice[i]);
             dieEls[i].classList.remove('is-rolling');
           }
           phase = 'done';
-          const total = dice.reduce((a,b) => a+b, 0);
-          const isAllSame = dice.length >= 2 && dice.every(v => v === dice[0]);
-          dr.classList.toggle('is-double', isAllSame);
-          dr.innerHTML = isAllSame
+          const total = dice.reduce((a, b) => a + b, 0);
+          const same = dice.length >= 2 && dice.every((value) => value === dice[0]);
+          dr.classList.toggle('is-double', same);
+          dr.innerHTML = same
             ? `🎉 모두 ${dice[0]}! 합계 <strong>${total}</strong>칸!`
             : `합계 <strong>${total}</strong>칸 이동!`;
           btn.textContent = `${total}칸 이동 →`;
           btn.disabled = false;
-          btn.onclick = () => { close(); onResult(total, isAllSame); };
-          if (!player.isHuman && state.aiAuto) {
-            setTimeout(() => btn.click(), 1100);
-          }
+          btn.onclick = () => { close(); onResult(total); };
+          if (!player.isHuman && state.aiAuto) setTimeout(() => btn.click(), 1100);
         }, 900);
       };
       btn.onclick = roll;
-
-      // AI 자동 굴리기
-      if (!player.isHuman && state.aiAuto) {
-        setTimeout(roll, 500);
-      }
+      if (!player.isHuman && state.aiAuto) setTimeout(roll, 500);
     });
   }
 
-  // ── 이동 ────────────────────────────────────────────
-  // 가드: 이전 movePlayer 가 끝나기 전에 새 호출이 들어와 두 setInterval 이
-  //       동시에 돌면서 칸이 2배로 진행되는 버그 방지.
-  let _moveInProgress = false;
+  let moveInProgress = false;
   function movePlayer(steps, onDone) {
-    if (_moveInProgress) return;
-    _moveInProgress = true;
-
-    const p = state.players.find(pp => pp.id === state.turn);
+    if (moveInProgress) return;
+    moveInProgress = true;
+    const player = state.players[state.turnIndex];
     let remaining = steps;
-
     const stepOnce = () => {
       if (remaining <= 0) {
-        _moveInProgress = false;
-        document.querySelectorAll('.cell').forEach(c => c.classList.remove('is-current'));
-        const dest = document.querySelector(`.cell[data-idx="${p.pos}"]`);
+        moveInProgress = false;
+        document.querySelectorAll('.cell').forEach((cell) => cell.classList.remove('is-current'));
+        const dest = document.querySelector(`.cell[data-idx="${player.pos}"]`);
         if (dest) dest.classList.add('is-current');
-        setTimeout(() => onDone(p), 400);
+        setTimeout(() => onDone(player), 400);
         return;
       }
-
-      p.pos = (p.pos + 1) % CELLS.length;
-      // 한 바퀴(0번 칸) 통과 시 월급
-      if (p.pos === 0) {
-        p.gold += SALARY;
-        toast(`${p.name} 월급 +${SALARY.toLocaleString()}골드!`);
+      player.pos = (player.pos + 1) % CELLS.length;
+      if (!CONFIG.ui.disableCellEffects && player.pos === 0) {
+        player.laps += 1;
+        const salaryGain = CONFIG.rules.salary + getSalaryBonus(player);
+        player.gold += salaryGain;
+        toast(`${player.name} 월급 +${salaryGain.toLocaleString()}골드!`);
       }
-      const tokenEl = document.getElementById(`token-${p.id}`);
+      const tokenEl = document.getElementById(`token-${player.id}`);
       if (tokenEl) {
-        placeToken(tokenEl, p);
-        tokenEl.classList.remove('is-hopping'); void tokenEl.offsetWidth;
+        placeToken(tokenEl, player);
+        tokenEl.classList.remove('is-hopping');
+        void tokenEl.offsetWidth;
         tokenEl.classList.add('is-hopping');
       }
       updateHud();
-      remaining--;
+      remaining -= 1;
       setTimeout(stepOnce, 420);
     };
-
     stepOnce();
   }
 
-  // ── 셀 효과 ────────────────────────────────────────
-  function applyCellEffect(player, doneAfterEffect) {
-    const cell = CELLS[player.pos];
-    const finish = () => doneAfterEffect();
+  function buildEventChoices(min, max, step) {
+    const values = [];
+    const safeStep = Math.max(100, step || 1000);
+    for (let value = min; value <= max; value += safeStep) values.push(value);
+    return values.length ? values : [-2000, -1000, 1000, 2000, 3000];
+  }
 
-    switch (cell.type) {
-      case 'start':
-        // 도착 자체로는 별도 보너스 없음 (지나갈 때만 월급)
-        finish(); break;
-      case 'city':
-        finish(); break;
-      case 'tax': {
-        const amt = 1000;
-        player.gold = Math.max(0, player.gold - amt);
-        toast(`${player.name} 세금 -${amt.toLocaleString()}골드 😣`);
-        updateHud();
-        setTimeout(finish, 700);
-        break;
-      }
-      case 'event': {
-        // 황금카드: -2000 ~ +3000 사이 랜덤 (1000 단위)
-        const choices = [-2000, -1000, +1000, +2000, +2000, +3000];
-        const amt = choices[Math.floor(Math.random()*choices.length)];
-        player.gold = Math.max(0, player.gold + amt);
-        const sign = amt >= 0 ? '+' : '';
-        const emoji = amt >= 0 ? '🎉' : '💸';
-        toast(`${emoji} 황금카드! ${sign}${amt.toLocaleString()}골드`);
-        updateHud();
-        setTimeout(finish, 800);
-        break;
-      }
-      case 'travel': {
-        // 다음 여행 칸으로 점프
-        let next = (player.pos + 1) % CELLS.length;
-        while (next !== player.pos && CELLS[next].type !== 'travel') {
-          next = (next + 1) % CELLS.length;
-        }
-        const passedStart = next < player.pos;
-        player.pos = next;
-        if (passedStart) { player.gold += SALARY; }
-        toast(`✈️ ${CELLS[next].label}로 여행!`);
-        snapToken(player);
-        updateHud();
-        setTimeout(finish, 800);
-        break;
-      }
-      case 'jail': {
-        player.jailTurns = 3;
-        toast(`🏝️ ${player.name} 무인도! 3턴 동안 못 움직여요`);
-        setTimeout(finish, 800);
-        break;
-      }
-      case 'space': {
-        // 임의의 비코너 칸으로 텔레포트
-        const candidates = CELLS
-          .map((c, i) => ({c, i}))
-          .filter(({c, i}) => i !== player.pos && c.type !== 'jail' && c.type !== 'space');
-        const pick = candidates[Math.floor(Math.random()*candidates.length)];
-        player.pos = pick.i;
-        toast(`🚀 우주여행! ${pick.c.label}로 텔레포트`);
-        snapToken(player);
-        setTimeout(finish, 900);
-        break;
-      }
-      case 'bonus': {
-        player.gold += SALARY;
-        toast(`🎁 사회복지! +${SALARY.toLocaleString()}골드`);
-        updateHud();
-        setTimeout(finish, 800);
-        break;
-      }
-      default:
-        finish();
-    }
+  function getSalaryBonus(player) {
+    return player.ability?.type === 'salary_bonus' ? numberOr(player.ability.amount, 0) : 0;
+  }
+
+  function getCityDiscount(player) {
+    return player.ability?.type === 'city_discount' ? clamp(numberOr(player.ability.percent, 0), 0, 0.8) : 0;
+  }
+
+  function getJailReduction(player) {
+    return player.ability?.type === 'jail_reduction' ? numberOr(player.ability.turns, 0) : 0;
+  }
+
+  function getEventMultiplier(player) {
+    return player.ability?.type === 'event_multiplier' ? numberOr(player.ability.factor, 1) : 1;
   }
 
   function snapToken(player) {
@@ -652,38 +870,129 @@
     if (tokenEl) placeToken(tokenEl, player);
   }
 
-  // ── 턴 진행 ────────────────────────────────────────
-  function nextTurn() {
-    if (state.winner) return;
-    // 다른 플레이어로 차례 넘김
-    state.turn = state.players.find(pp => pp.id !== state.turn).id;
-    state.busy = false;
-    updateHud();
-
-    const p = state.players.find(pp => pp.id === state.turn);
-    if (p.jailTurns > 0) {
-      p.jailTurns--;
-      toast(`🏝️ ${p.name} 무인도 (${p.jailTurns}턴 남음)`);
-      setTimeout(() => {
-        nextTurn();
-      }, 1000);
+  function handleCityCell(player, cell, done) {
+    const price = numberOr(cell.price, 5000);
+    if (!cell.ownerId) {
+      const finalPrice = Math.max(0, Math.round(price * (1 - getCityDiscount(player))));
+      if (player.gold >= finalPrice) {
+        player.gold -= finalPrice;
+        cell.ownerId = player.id;
+        toast(`🏙️ ${player.name} ${cell.label} 매입! -${finalPrice.toLocaleString()}골드`);
+        updateHud();
+      } else {
+        toast(`😥 ${cell.label} 매입 실패. ${finalPrice.toLocaleString()}골드가 필요해요.`);
+      }
+      setTimeout(done, 800);
       return;
     }
-
-    if (!p.isHuman && state.aiAuto) {
-      setTimeout(() => startTurn(), 700);
+    if (cell.ownerId === player.id) {
+      toast(`😊 ${player.name}의 ${cell.label}!`);
+      setTimeout(done, 700);
+      return;
     }
+    const owner = state.players.find((p) => p.id === cell.ownerId);
+    const toll = numberOr(cell.toll, Math.max(500, Math.round(price * CONFIG.rules.tollRate)));
+    player.gold = Math.max(0, player.gold - toll);
+    if (owner) owner.gold += toll;
+    toast(`💸 ${player.name} 통행료 -${toll.toLocaleString()}골드`);
+    updateHud();
+    setTimeout(done, 800);
+  }
+
+  function applyCellEffect(player, doneAfterEffect) {
+    if (CONFIG.ui.disableCellEffects) {
+      doneAfterEffect();
+      return;
+    }
+    const cell = CELLS[player.pos];
+    const finish = () => doneAfterEffect();
+    switch (cell.type) {
+      case 'start':
+        finish();
+        break;
+      case 'city':
+        handleCityCell(player, cell, finish);
+        break;
+      case 'tax':
+        player.gold = Math.max(0, player.gold - CONFIG.rules.taxAmount);
+        toast(`${player.name} 세금 -${CONFIG.rules.taxAmount.toLocaleString()}골드 😣`);
+        updateHud();
+        setTimeout(finish, 700);
+        break;
+      case 'event': {
+        const choices = buildEventChoices(CONFIG.rules.eventMin, CONFIG.rules.eventMax, CONFIG.rules.eventStep);
+        const base = choices[Math.floor(Math.random() * choices.length)];
+        const amount = Math.round(base * getEventMultiplier(player));
+        player.gold = Math.max(0, player.gold + amount);
+        toast(`${amount >= 0 ? '🎉' : '💸'} 황금카드! ${formatSigned(amount)}골드`);
+        updateHud();
+        setTimeout(finish, 800);
+        break;
+      }
+      case 'travel': {
+        let next = (player.pos + 1) % CELLS.length;
+        while (next !== player.pos && CELLS[next].type !== 'travel') next = (next + 1) % CELLS.length;
+        const passedStart = next < player.pos;
+        player.pos = next;
+        if (passedStart) {
+          player.laps += 1;
+          player.gold += CONFIG.rules.salary + getSalaryBonus(player);
+        }
+        toast(`✈️ ${CELLS[next].label}로 여행!`);
+        snapToken(player);
+        updateHud();
+        setTimeout(finish, 800);
+        break;
+      }
+      case 'jail':
+        player.jailTurns = Math.max(0, CONFIG.rules.jailTurns - getJailReduction(player));
+        toast(`🏝️ ${player.name} 무인도! ${player.jailTurns}턴 동안 못 움직여요`);
+        setTimeout(finish, 800);
+        break;
+      case 'space': {
+        const candidates = CELLS.map((c, i) => ({ c, i })).filter(({ c, i }) => i !== player.pos && c.type !== 'jail' && c.type !== 'space');
+        const pick = candidates[Math.floor(Math.random() * candidates.length)];
+        player.pos = pick.i;
+        toast(`🚀 우주여행! ${pick.c.label}로 텔레포트`);
+        snapToken(player);
+        setTimeout(finish, 900);
+        break;
+      }
+      case 'bonus':
+        player.gold += CONFIG.rules.bonusAmount;
+        toast(`🎁 사회복지! +${CONFIG.rules.bonusAmount.toLocaleString()}골드`);
+        updateHud();
+        setTimeout(finish, 800);
+        break;
+      default:
+        finish();
+    }
+  }
+
+  function nextTurn() {
+    if (state.winner) return;
+    state.turnIndex = (state.turnIndex + 1) % state.players.length;
+    state.busy = false;
+    updateHud();
+    const player = state.players[state.turnIndex];
+    if (player.jailTurns > 0) {
+      player.jailTurns -= 1;
+      toast(`🏝️ ${player.name} 무인도 (${player.jailTurns}턴 남음)`);
+      setTimeout(() => nextTurn(), 1000);
+      return;
+    }
+    if (!player.isHuman && state.aiAuto) setTimeout(() => startTurn(), 700);
   }
 
   function startTurn() {
     if (state.busy || state.winner) return;
-    const p = state.players.find(pp => pp.id === state.turn);
-    if (p.jailTurns > 0) return;
+    const player = state.players[state.turnIndex];
+    if (player.jailTurns > 0) return;
     state.busy = true;
     updateHud();
-    openDiceModal(p, (total, isDouble) => {
-      movePlayer(total, (player) => {
-        applyCellEffect(player, () => {
+    openDiceModal(player, (total) => {
+      movePlayer(total, (movedPlayer) => {
+        applyCellEffect(movedPlayer, () => {
           checkWin();
           nextTurn();
         });
@@ -692,58 +1001,73 @@
   }
 
   function checkWin() {
-    state.players.forEach(p => {
-      if (p.gold >= WIN_GOLD && !state.winner) {
-        state.winner = p.id;
-      }
-    });
-    if (state.winner) {
-      const winner = state.players.find(p => p.id === state.winner);
-      const loser = state.players.find(p => p.id !== state.winner);
-      openModal((m, close) => {
-        m.innerHTML = `
-          <div style="font-size:64px">🏆</div>
-          <h2>${winner.name} 승리!</h2>
-          <p>골드 <strong style="color:var(--color-red)">${winner.gold.toLocaleString()}</strong>골드 달성</p>
-          <p style="color:var(--color-brown-soft);font-size:13px">
-            ${loser.name}: ${loser.gold.toLocaleString()}골드
-          </p>`;
-        const restart = document.createElement('button');
-        restart.className = 'btn';
-        restart.textContent = '다시 하기 ↻';
-        restart.onclick = () => { close(); resetGame(); };
-        m.appendChild(restart);
+    if (CONFIG.ui.disableWin) return;
+    const reachedLaps = CONFIG.rules.winLaps > 0 && state.players.some((player) => player.laps >= CONFIG.rules.winLaps);
+    if (reachedLaps) {
+      const richest = [...state.players].sort((a, b) => b.gold - a.gold)[0];
+      state.winner = richest.id;
+      state.finishReason = `${CONFIG.rules.winLaps}바퀴 후 가장 부자`;
+    } else {
+      state.players.forEach((player) => {
+        if (player.gold >= CONFIG.rules.winGold && !state.winner) {
+          state.winner = player.id;
+          state.finishReason = `${CONFIG.rules.winGold.toLocaleString()}골드 달성`;
+        }
       });
     }
+    if (!state.winner) return;
+    const winner = state.players.find((player) => player.id === state.winner);
+    openModal((m, close) => {
+      m.innerHTML = `
+        <div style="font-size:64px">🏆</div>
+        <h2>${winner.name} 승리!</h2>
+        <p><strong style="color:var(--color-red)">${state.finishReason}</strong></p>
+        <div style="width:100%;font-size:13px;color:var(--color-brown-soft)">
+          ${state.players.map((player) => `${player.name}: ${player.gold.toLocaleString()}골드 · ${player.laps}바퀴`).join('<br>')}
+        </div>`;
+      const restart = document.createElement('button');
+      restart.className = 'btn';
+      restart.textContent = '다시 하기 ↻';
+      restart.onclick = () => { close(); resetGame(); };
+      m.appendChild(restart);
+    });
   }
 
   function resetGame() {
-    state.players.forEach(p => { p.pos = 0; p.gold = 10000; p.jailTurns = 0; });
-    state.turn = HUMAN_ID;   // 인간이 먼저 (기존 'dennis' 하드코딩 버그 수정)
+    state.players.forEach((player, index) => {
+      player.pos = 0;
+      player.gold = CONFIG.rules.startGold;
+      player.jailTurns = 0;
+      player.laps = 0;
+      player.index = index;
+    });
+    CELLS.forEach((cell) => { if (cell.type === 'city') cell.ownerId = null; });
+    state.turnIndex = 0;
     state.busy = false;
     state.winner = null;
-    document.querySelectorAll('.cell').forEach(c => c.classList.remove('is-current'));
+    state.finishReason = null;
+    document.querySelectorAll('.cell').forEach((cell) => cell.classList.remove('is-current'));
     renderTokens();
     updateHud();
     toast('새 게임 시작!');
   }
 
-  // ── 시작 버튼 ─────────────────────────────────────
   rollBtn.addEventListener('click', startTurn);
+  rollBtn.classList.add(`theme-${CONFIG.dice.theme}`);
+  if (rollEmoji) rollEmoji.textContent = CONFIG.dice.emoji;
+  if (rollLabel) rollLabel.textContent = `${CONFIG.dice.label} 굴리기`;
 
-  // ── BGM (오디오 파일 없이 Web Audio 합성) ────────────
-  // 첫 사용자 인터랙션(주사위 클릭 등) 후 시작 — 자동재생 차단 우회
   const BGM_PRESETS = {
     adventure: { notes:[262, 392, 440, 392, 349, 294, 262, 330], tempo:.32, type:'triangle', vol:.05 },
-    calm:      { notes:[262, 330, 392, 330, 349, 294, 262, 220], tempo:.7,  type:'sine',     vol:.04 },
-    upbeat:    { notes:[262, 294, 330, 392, 330, 392, 440, 392], tempo:.22, type:'square',   vol:.04 },
+    calm:      { notes:[262, 330, 392, 330, 349, 294, 262, 220], tempo:.7, type:'sine', vol:.04 },
+    upbeat:    { notes:[262, 294, 330, 392, 330, 392, 440, 392], tempo:.22, type:'square', vol:.04 },
     off:       null,
   };
-  let _bgmStarted = false;
+  let bgmStarted = false;
   function startBGM() {
-    if (_bgmStarted) return;
-    _bgmStarted = true;
-    const preset = BGM_PRESETS[BGM_KIND];
+    if (bgmStarted) return;
+    bgmStarted = true;
+    const preset = BGM_PRESETS[CONFIG.bgm.kind];
     if (!preset) return;
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) return;
@@ -759,18 +1083,19 @@
       gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + preset.tempo);
       osc.start();
       osc.stop(ctx.currentTime + preset.tempo);
-      i++;
+      i += 1;
     }, preset.tempo * 1000);
   }
-  // 첫 클릭에 BGM 시작 (자동재생 정책 회피)
   document.addEventListener('click', startBGM, { once:true });
 
-  // 첫 화면 안내 — 파싱된 설정이 잘 적용됐는지 학생이 즉시 확인할 수 있도록 표시
-  console.log('[블루마블 설정]', { HUMAN_ID, HUMAN_NAME, AI_ID, AI_NAME, WIN_GOLD, DICE_COUNT, BGM_KIND });
+  renderCells();
+  renderHud();
+  renderTokens();
+  updateHud();
+  console.log('[블루마블 설정]', CONFIG);
   setTimeout(() => {
-    const me = state.players.find(p => p.isHuman);
-    const charKor = me.id === 'seulgi' ? '슬기' : '데니스';
-    toast(`🎲 ${me.name}(${charKor}) · 주사위 ${DICE_COUNT}개 · 승리 ${WIN_GOLD.toLocaleString()}골드`);
+    const me = state.players[0];
+    toast(`🎲 ${CONFIG.title} · ${me.name} · 주사위 ${CONFIG.rules.diceCount}개`);
   }, 400);
 
 })();

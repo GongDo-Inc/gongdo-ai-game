@@ -7,7 +7,7 @@
  * @updated     2026-04-27 (KST)
  * @agent       👧 클로이 FE (자비스 개발팀) · 지시: 자비스 PO (3차 핫픽스 — 김감사 v2.0 진단 CRITICAL-1 차단)
  * @ordered-by  용남 대표
- * @description /api/chat — mode="generator" HTML 게임 생성 · mode="tutor" 학생 질문 응답.
+ * @description /api/chat — mode="generator" HTML 게임 생성 · mode="tutor" 학생 질문 응답 · mode="dice" 1차시 주사위 해석.
  *              모델: claude-haiku-4-5-20251001 · Prompt Caching 적용.
  *
  * @change-summary
@@ -355,6 +355,52 @@ const SYSTEM_TUTOR = `당신은 대한민국 초등 5~6학년 학생에게 "바�
 학생: "안녕하세요"
 → "안녕하세요! 오늘도 재밌는 게임 만들어볼까요? 🌟 [HINT:]"`;
 
+const SYSTEM_DICE = `당신은 초등학생의 1차시 보드게임 문서에서 "주사위 모양"만 읽어 짧은 JSON으로 정리하는 도우미입니다.
+
+규칙:
+1. 반드시 JSON 객체만 반환합니다. 설명 문장 금지.
+2. 허용 키는 label, emoji, theme 세 개뿐입니다.
+3. theme 는 classic, star, heart, lightning 중 하나만 사용합니다.
+4. emoji 는 해당 주사위 분위기를 잘 보여주는 이모지 1개를 넣습니다.
+5. label 은 학생 문서의 주사위 설명을 20자 이내로 자연스럽게 정리합니다.
+6. 학생 문서에 "주사위" 내용이 모호하면 {"label":"기본 주사위","emoji":"🎲","theme":"classic"} 를 반환합니다.
+
+예시:
+{"label":"별모양 주사위","emoji":"⭐","theme":"star"}
+{"label":"하트 주사위","emoji":"💖","theme":"heart"}
+{"label":"번개 주사위","emoji":"⚡","theme":"lightning"}
+{"label":"기본 주사위","emoji":"🎲","theme":"classic"}`;
+
+const SYSTEM_PIN_COLORS = `당신은 초등학생의 1차시 보드게임 문서에서 "플레이어 핀" 색만 읽어 색상 코드를 정리하는 도우미입니다.
+
+규칙:
+1. 반드시 JSON 객체만 반환합니다. 설명 문장 금지.
+2. 허용 키는 pins 하나만 사용합니다.
+3. pins 는 최대 2개의 배열입니다.
+4. 각 원소는 color 키만 가진 객체입니다.
+5. color 는 반드시 #RRGGBB 형식이어야 합니다.
+6. "연두색", "하늘색", "검정", "보라", "살구색" 같은 자연어를 가장 가까운 선명한 색상 코드로 바꿉니다.
+7. 문서가 모호하면 [{"color":"#E63946"},{"color":"#3D7BA3"}] 를 반환합니다.
+
+예시:
+{"pins":[{"color":"#C7F464"},{"color":"#7B61A8"}]}
+{"pins":[{"color":"#F7C548"},{"color":"#1A1A1A"}]}`;
+
+const SYSTEM_BOARD_COLOR = `당신은 초등학생의 1차시 보드게임 문서에서 "배경" 또는 "보드판" 색만 읽어 색상 코드를 정리하는 도우미입니다.
+
+규칙:
+1. 반드시 JSON 객체만 반환합니다. 설명 문장 금지.
+2. 허용 키는 board 하나만 사용합니다.
+3. board 는 backgroundColor 키만 가집니다.
+4. backgroundColor 는 반드시 #RRGGBB 형식이어야 합니다.
+5. "연두색", "하늘색", "크림색", "기본 배경색" 같은 표현을 가장 가까운 보기 좋은 색상 코드로 바꿉니다.
+6. 문서가 모호하면 {"board":{"backgroundColor":"#D8C6A4"}} 를 반환합니다.
+
+예시:
+{"board":{"backgroundColor":"#C7F464"}}
+{"board":{"backgroundColor":"#BFE7FF"}}
+{"board":{"backgroundColor":"#D8C6A4"}}`;
+
 // ─────────── 후처리: 캐릭터 이름 → 이모지 강제 치환 ───────────
 // Claude haiku가 매핑 규칙을 100% 지키지 않는 경우를 서버에서 보정.
 // 문자열 리터럴 내부에 정확히 캐릭터 이름만 있는 경우만 치환하여 본문 텍스트는 유지.
@@ -502,7 +548,15 @@ export default async function handler(req, res) {
     try { body = JSON.parse(body); } catch { body = {}; }
   }
 
-  const mode = body?.mode === 'tutor' ? 'tutor' : 'generator';
+  const mode = body?.mode === 'tutor'
+    ? 'tutor'
+    : body?.mode === 'dice'
+      ? 'dice'
+      : body?.mode === 'pin_colors'
+        ? 'pin_colors'
+        : body?.mode === 'board_color'
+          ? 'board_color'
+      : 'generator';
   // 요청 IP 추출 — rate limit 복합 키 보조용 (S-AUTH-01)
   const forwardedFor = (req.headers['x-forwarded-for'] || '').toString();
   const reqIp = forwardedFor.split(',')[0].trim() || req.socket?.remoteAddress || '';
@@ -521,7 +575,7 @@ export default async function handler(req, res) {
   }
 
   // Rate limit (S-AUTH-01: studentId + IP 복합 키)
-  const limit = mode === 'tutor' ? 15 : 5;
+  const limit = mode === 'tutor' ? 15 : mode === 'dice' || mode === 'pin_colors' || mode === 'board_color' ? 20 : 5;
   const rl = await checkAndIncrement(mode, studentId, limit, reqIp);
   if (!rl.ok) {
     res.status(429).json({
@@ -530,7 +584,13 @@ export default async function handler(req, res) {
       resetInSec: rl.resetInSec,
       message: mode === 'tutor'
         ? '공도쌤이 조금 쉬고 있어요. 1분만 문서를 살펴볼까요?'
-        : '우와, 열정 가득! 🌟 30초만 천천히 문서를 읽어볼까요?',
+        : mode === 'dice'
+          ? '주사위 모양을 생각하는 중이에요. 잠깐 뒤에 다시 눌러볼까요?'
+          : mode === 'pin_colors'
+            ? '핀 색깔을 고르는 중이에요. 잠깐 뒤에 다시 눌러볼까요?'
+            : mode === 'board_color'
+              ? '배경색을 고르는 중이에요. 잠깐 뒤에 다시 눌러볼까요?'
+          : '우와, 열정 가득! 🌟 30초만 천천히 문서를 읽어볼까요?',
     });
     return;
   }
@@ -544,17 +604,31 @@ export default async function handler(req, res) {
   }
 
   const client = new Anthropic({ apiKey });
-  const systemText = mode === 'tutor' ? SYSTEM_TUTOR : SYSTEM_GENERATOR;
+  const systemText = mode === 'tutor'
+    ? SYSTEM_TUTOR
+    : mode === 'dice'
+      ? SYSTEM_DICE
+      : mode === 'pin_colors'
+        ? SYSTEM_PIN_COLORS
+        : mode === 'board_color'
+          ? SYSTEM_BOARD_COLOR
+        : SYSTEM_GENERATOR;
 
   // S-AI-01: user input 을 XML 태그로 감싸 system prompt 경계를 명시 (prompt injection 방어)
   const wrappedUserContent = (mode === 'tutor' && editorContent)
     ? `[학생의 현재 바이브코딩 문서]\n<student_document>\n${editorContent}\n</student_document>\n\n[학생의 질문]\n<student_question>\n${userText}\n</student_question>`
-    : `<student_document>\n${userText}\n</student_document>`;
+    : mode === 'dice'
+      ? `[학생의 1차시 문서]\n<student_document>\n${userText}\n</student_document>\n\n[할 일]\n주사위 섹션만 읽고 JSON 하나로 정리하세요.`
+      : mode === 'pin_colors'
+        ? `[학생의 1차시 문서]\n<student_document>\n${userText}\n</student_document>\n\n[할 일]\n플레이어 핀 섹션만 읽고 pins 배열 JSON 하나로 정리하세요.`
+        : mode === 'board_color'
+          ? `[학생의 1차시 문서]\n<student_document>\n${userText}\n</student_document>\n\n[할 일]\n배경 또는 보드판 섹션만 읽고 backgroundColor JSON 하나로 정리하세요.`
+      : `<student_document>\n${userText}\n</student_document>`;
 
   try {
     const msg = await client.messages.create({
       model: MODEL,
-      max_tokens: mode === 'tutor' ? 600 : 5000,
+      max_tokens: mode === 'tutor' ? 600 : mode === 'dice' || mode === 'pin_colors' || mode === 'board_color' ? 120 : 5000,
       system: [
         { type: 'text', text: systemText, cache_control: { type: 'ephemeral' } },
       ],
@@ -569,6 +643,9 @@ export default async function handler(req, res) {
       .join('\n');
 
     let html = null;
+    let dice = null;
+    let pins = null;
+    let board = null;
     let htmlExtractStatus = null;   // 'ok' | 'no_doctype' | 'markdown_only' | 'empty'
     if (mode === 'generator') {
       // ── 1) ```html ... ``` 코드블럭 우선 추출 ──
@@ -607,6 +684,48 @@ export default async function handler(req, res) {
         if (musicScore) html = injectBgmIntoGame(html, musicScore);
       }
     }
+    if (mode === 'dice') {
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      try {
+        const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
+        const allowedThemes = new Set(['classic', 'star', 'heart', 'lightning']);
+        dice = {
+          label: String(parsed?.label || '기본 주사위').slice(0, 20),
+          emoji: String(parsed?.emoji || '🎲').slice(0, 4),
+          theme: allowedThemes.has(parsed?.theme) ? parsed.theme : 'classic',
+        };
+      } catch {
+        dice = { label: '기본 주사위', emoji: '🎲', theme: 'classic' };
+      }
+    }
+    if (mode === 'pin_colors') {
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      try {
+        const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
+        const safePins = Array.isArray(parsed?.pins) ? parsed.pins : [];
+        pins = safePins.slice(0, 2).map((pin, index) => {
+          const fallback = index === 0 ? '#E63946' : '#3D7BA3';
+          const color = String(pin?.color || fallback).trim();
+          return {
+            color: /^#([0-9a-f]{6})$/i.test(color) ? color : fallback,
+          };
+        });
+      } catch {
+        pins = [{ color: '#E63946' }, { color: '#3D7BA3' }];
+      }
+    }
+    if (mode === 'board_color') {
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      try {
+        const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
+        const color = String(parsed?.board?.backgroundColor || '#D8C6A4').trim();
+        board = {
+          backgroundColor: /^#([0-9a-f]{6})$/i.test(color) ? color : '#D8C6A4',
+        };
+      } catch {
+        board = { backgroundColor: '#D8C6A4' };
+      }
+    }
 
     // 디버그 메타 (규칙 0 준수 확인용)
     let debugMeta = null;
@@ -621,6 +740,9 @@ export default async function handler(req, res) {
       mode,
       reply: mode === 'tutor' ? raw.trim() : undefined,
       html,
+      dice,
+      pins,
+      board,
       // 핫픽스 #2: HTML 추출 상태를 클라이언트에 전달 → app.js 가 'ok' 외에는 오류 안내 표시
       htmlExtractStatus: mode === 'generator' ? htmlExtractStatus : undefined,
       usage: msg.usage,
