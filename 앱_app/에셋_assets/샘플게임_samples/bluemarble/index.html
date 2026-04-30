@@ -21,7 +21,7 @@
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;height:100%;overflow:hidden;
-    font-family:var(--font-body);color:var(--color-brown);background:#dcb9d4}
+    font-family:var(--font-body);color:var(--color-brown);background:var(--stage-color, #dcb9d4)}
   button{font-family:inherit}
 
   /* ── 전체 레이아웃 ─────────────────────────────────────── */
@@ -408,6 +408,7 @@
 
   const CONFIG = normalizeConfig(injectedConfig, params);
   document.documentElement.style.setProperty('--board-bg', `url('${CONFIG.board.backgroundImageUrl}')`);
+  document.documentElement.style.setProperty('--stage-color', CONFIG.board.stageColor || '#EFE8D6');
   document.documentElement.style.setProperty('--board-color', CONFIG.board.backgroundColor || '#D8C6A4');
   const CELLS = buildCells(DEFAULT_CELLS, CONFIG);
 
@@ -478,6 +479,7 @@
       board: {
         backgroundImageUrl: config.board?.backgroundImageUrl
           || 'https://gongdo-ai-game.vercel.app/에셋_assets/배경_backgrounds/worldmap.png',
+        stageColor: config.board?.stageColor || '#EFE8D6',
         backgroundColor: config.board?.backgroundColor || '#D8C6A4',
       },
       rules: {

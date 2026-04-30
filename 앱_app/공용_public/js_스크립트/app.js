@@ -63,6 +63,7 @@
     currentWork: null,
     myWorks: [],
     lessonCache: new Map(),
+    lessonDrafts: new Map(),
     studentId: getOrCreateStudentId(),
     lastGeneratedHtml: null,
     lastGeneratedHtmlSnapshot: null,  // { html, sourceText } — BUNKER-003 FR-19
@@ -239,6 +240,57 @@
     toggleBtn.setAttribute('aria-expanded', String(isOpen));
   }
 
+  const LESSON_INHERIT_SECTIONS = [
+    '플레이어 핀',
+    '주사위',
+    '배경',
+    '보드판',
+    '칸 목록',
+    '도시 목록',
+    '규칙',
+  ];
+
+  function extractSectionBlock(text, heading) {
+    const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(^#{2,3}\\s+${escaped}\\s*\\n[\\s\\S]*?)(?=^#{2,3}\\s+|^---|\\Z)`, 'm');
+    const match = String(text || '').match(re);
+    return match ? match[1].trimEnd() : '';
+  }
+
+  function replaceSectionBlock(text, heading, replacementBlock) {
+    if (!replacementBlock) return text;
+    const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(^#{2,3}\\s+${escaped}\\s*\\n)([\\s\\S]*?)(?=^#{2,3}\\s+|^---|\\Z)`, 'm');
+    if (!re.test(String(text || ''))) return text;
+    const replacementBody = replacementBlock.replace(/^#{2,3}\s+[^\n]+\n?/, '').trimEnd();
+    return String(text || '').replace(re, (_full, headingLine) => `${headingLine}${replacementBody}\n`);
+  }
+
+  function mergeInheritedLessonDoc(baseDoc, prevDoc) {
+    if (!baseDoc || !prevDoc) return baseDoc;
+    return LESSON_INHERIT_SECTIONS.reduce((next, heading) => {
+      const inheritedBlock = extractSectionBlock(prevDoc, heading);
+      return inheritedBlock ? replaceSectionBlock(next, heading, inheritedBlock) : next;
+    }, baseDoc);
+  }
+
+  function saveCurrentLessonDraft() {
+    if (!state.currentLesson) return;
+    const editor = $('#editor-textarea');
+    if (!editor) return;
+    const value = editor.value;
+    if (typeof value === 'string' && value.trim()) {
+      state.lessonDrafts.set(Number(state.currentLesson), value);
+    }
+  }
+
+  function getComposedLessonDoc(lessonNo, baseDoc) {
+    const draft = state.lessonDrafts.get(Number(lessonNo));
+    if (draft) return draft;
+    const prevDraft = state.lessonDrafts.get(Number(lessonNo) - 1);
+    return mergeInheritedLessonDoc(baseDoc, prevDraft);
+  }
+
   // ─────────── 차시 문서 선택 ───────────
   async function selectLesson(lessonNo) {
     // BUNKER-2026-04-28-001: 비활성 차시 안전망 (클릭 핸들러 가드 우회 시 보호)
@@ -247,6 +299,7 @@
       showCharacterToast('3,4교시에 만나요');
       return;
     }
+    saveCurrentLessonDraft();
     state.currentLesson = Number(lessonNo);
     state.currentWork = null;
 
@@ -299,7 +352,7 @@
       state.lessonCache.set(file, stripped);
     }
     state.currentLessonFile = file;
-    editor.value = state.lessonCache.get(file);
+    editor.value = getComposedLessonDoc(state.currentLesson, state.lessonCache.get(file));
   }
 
   function loadWork(work) {
@@ -412,21 +465,27 @@
     return { label: themeText || '기본 주사위', emoji: '🎲', theme: 'classic' };
   }
 
-  function parseLessonOneBoardColor(text) {
+  function parseLessonOneBackgroundColor(text) {
     const backgroundBlock = sectionBlock(text, '배경');
+    const candidates = [].concat(backgroundBlock ? backgroundBlock.split('\n') : []);
+    for (const line of candidates.map((value) => value.trim())) {
+      if (!line) continue;
+      const backgroundMatch = line.match(/(.+?)\s*배경색$/);
+      if (backgroundMatch) {
+        return resolveNamedColor(backgroundMatch[1].trim(), '#EFE8D6');
+      }
+    }
+    return '#EFE8D6';
+  }
+
+  function parseLessonOneBoardColor(text) {
     const boardBlock = sectionBlock(text, '보드판');
-    const candidates = []
-      .concat(backgroundBlock ? backgroundBlock.split('\n') : [])
-      .concat(boardBlock ? boardBlock.split('\n') : []);
+    const candidates = [].concat(boardBlock ? boardBlock.split('\n') : []);
     for (const line of candidates.map((value) => value.trim())) {
       if (!line) continue;
       const boardColorMatch = line.match(/보드\s*색상[:：]?\s*(.+)$/);
       if (boardColorMatch) {
         return resolveNamedColor(boardColorMatch[1].replace(/배경색|색상|색|보드판/g, '').trim(), '#D8C6A4');
-      }
-      const backgroundMatch = line.match(/(.+?)\s*배경색$/);
-      if (backgroundMatch) {
-        return resolveNamedColor(backgroundMatch[1].trim(), '#D8C6A4');
       }
     }
     return '#D8C6A4';
@@ -626,6 +685,7 @@
       title: title.replace(/^\d+차시\s*[^\s]+\s*/, '').trim(),
       board: {
         backgroundImageUrl: parseBoardImage(text),
+        stageColor: isPinLesson ? parseLessonOneBackgroundColor(text) : '#EFE8D6',
         backgroundColor: isPinLesson ? parseLessonOneBoardColor(text) : '#D8C6A4',
       },
       rules: parseMarbleRules(text),
@@ -669,7 +729,7 @@
   async function resolveLessonOneBoardColorWithClaude(sourceText) {
     try {
       const data = await callChatApi({ document: sourceText, mode: 'board_color' });
-      if (data?.board?.backgroundColor) return data.board.backgroundColor;
+      if (data?.board && typeof data.board === 'object') return data.board;
     } catch (_) {
       // 로컬 파서 fallback
     }
@@ -693,20 +753,32 @@
     const config = parseMarbleLessonConfig(sourceText, lessonNo);
     if ((Number(lessonNo) === 1 || Number(lessonNo) === 2) && options.useAiDice) {
       const diceFromClaude = await resolveLessonOneDiceWithClaude(sourceText);
-      if (diceFromClaude) config.dice = { ...config.dice, ...diceFromClaude };
+      const localDiceLooksExplicit = config.dice.theme !== 'classic' || config.dice.label !== '기본 주사위';
+      if (diceFromClaude && !localDiceLooksExplicit) {
+        config.dice = { ...config.dice, ...diceFromClaude };
+      }
     }
     if ((Number(lessonNo) === 1 || Number(lessonNo) === 2) && options.useAiPins) {
       const pinsFromClaude = await resolveLessonOnePinColorsWithClaude(sourceText);
       if (pinsFromClaude) {
         config.players = config.players.map((player, index) => ({
           ...player,
-          pinColor: pinsFromClaude[index]?.color || player.pinColor,
+          pinColor: player.pinColor || pinsFromClaude[index]?.color || player.pinColor,
         }));
       }
     }
     if ((Number(lessonNo) === 1 || Number(lessonNo) === 2) && options.useAiBoardColor) {
       const boardColorFromClaude = await resolveLessonOneBoardColorWithClaude(sourceText);
-      if (boardColorFromClaude) config.board.backgroundColor = boardColorFromClaude;
+      const localStageExplicit = config.board.stageColor && config.board.stageColor !== '#EFE8D6';
+      const localBoardExplicit = config.board.backgroundColor && config.board.backgroundColor !== '#D8C6A4';
+      if (boardColorFromClaude && !localBoardExplicit && typeof boardColorFromClaude === 'object') {
+        if (!localStageExplicit && boardColorFromClaude.stageColor) {
+          config.board.stageColor = boardColorFromClaude.stageColor;
+        }
+        if (boardColorFromClaude.backgroundColor) {
+          config.board.backgroundColor = boardColorFromClaude.backgroundColor;
+        }
+      }
     }
     const injected = `<base href="${MARBLE_TEMPLATE_BASE}"><script>window.__GONGDO_MARBLE_CONFIG__=${JSON.stringify(config)};</script>`;
     return template.replace(/<head>/i, `<head>${injected}`);
@@ -725,6 +797,7 @@
     if (state.currentLesson >= 1 && state.currentLesson <= 4) {
       showGeneratingModal();
       try {
+        saveCurrentLessonDraft();
         const isPinLesson = Number(state.currentLesson) === 1 || Number(state.currentLesson) === 2;
         const useAiDice = isPinLesson && isLessonDocumentModified();
         const useAiPins = isPinLesson && isLessonDocumentModified();

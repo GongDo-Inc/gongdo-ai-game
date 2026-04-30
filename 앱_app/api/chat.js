@@ -393,13 +393,14 @@ const SYSTEM_BOARD_COLOR = `당신은 초등학생의 1차시 보드게임 문�
 2. 허용 키는 board 하나만 사용합니다.
 3. board 는 backgroundColor 키만 가집니다.
 4. backgroundColor 는 반드시 #RRGGBB 형식이어야 합니다.
-5. "연두색", "하늘색", "크림색", "기본 배경색" 같은 표현을 가장 가까운 보기 좋은 색상 코드로 바꿉니다.
-6. 문서가 모호하면 {"board":{"backgroundColor":"#D8C6A4"}} 를 반환합니다.
+5. stageColor 는 반드시 #RRGGBB 형식이어야 합니다.
+6. "연두색", "하늘색", "크림색", "기본 배경색" 같은 표현을 가장 가까운 보기 좋은 색상 코드로 바꿉니다.
+7. 문서가 모호하면 {"board":{"stageColor":"#EFE8D6","backgroundColor":"#D8C6A4"}} 를 반환합니다.
 
 예시:
-{"board":{"backgroundColor":"#C7F464"}}
-{"board":{"backgroundColor":"#BFE7FF"}}
-{"board":{"backgroundColor":"#D8C6A4"}}`;
+{"board":{"stageColor":"#FFF4CC","backgroundColor":"#C7F464"}}
+{"board":{"stageColor":"#EAF6FF","backgroundColor":"#BFE7FF"}}
+{"board":{"stageColor":"#EFE8D6","backgroundColor":"#D8C6A4"}}`;
 
 // ─────────── 후처리: 캐릭터 이름 → 이모지 강제 치환 ───────────
 // Claude haiku가 매핑 규칙을 100% 지키지 않는 경우를 서버에서 보정.
@@ -622,7 +623,7 @@ export default async function handler(req, res) {
       : mode === 'pin_colors'
         ? `[학생의 1차시 문서]\n<student_document>\n${userText}\n</student_document>\n\n[할 일]\n플레이어 핀 섹션만 읽고 pins 배열 JSON 하나로 정리하세요.`
         : mode === 'board_color'
-          ? `[학생의 1차시 문서]\n<student_document>\n${userText}\n</student_document>\n\n[할 일]\n배경 또는 보드판 섹션만 읽고 backgroundColor JSON 하나로 정리하세요.`
+        ? `[학생의 1차시 문서]\n<student_document>\n${userText}\n</student_document>\n\n[할 일]\n배경색은 stageColor, 보드 색상은 backgroundColor로 읽고 JSON 하나로 정리하세요.`
       : `<student_document>\n${userText}\n</student_document>`;
 
   try {
@@ -719,11 +720,13 @@ export default async function handler(req, res) {
       try {
         const parsed = JSON.parse(jsonMatch ? jsonMatch[0] : raw);
         const color = String(parsed?.board?.backgroundColor || '#D8C6A4').trim();
+        const stageColor = String(parsed?.board?.stageColor || '#EFE8D6').trim();
         board = {
+          stageColor: /^#([0-9a-f]{6})$/i.test(stageColor) ? stageColor : '#EFE8D6',
           backgroundColor: /^#([0-9a-f]{6})$/i.test(color) ? color : '#D8C6A4',
         };
       } catch {
-        board = { backgroundColor: '#D8C6A4' };
+        board = { stageColor: '#EFE8D6', backgroundColor: '#D8C6A4' };
       }
     }
 
