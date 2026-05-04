@@ -73,6 +73,7 @@
     tutorLog: [],       // {at, role:'user'|'bot', text, hint?}
     sessionStartedAt: Date.now(),
     config: {},         // config.json 로드 결과
+    lessonBackgroundCache: new Map(), // prompt -> data URL
   };
 
   async function loadConfig() {
@@ -615,7 +616,14 @@
       .filter(Boolean);
   }
 
-  function parseLessonOneCells(text) {
+  function parseBoardCellCount(text) {
+    const boardBlock = sectionBlock(text, '보드판') || text;
+    const countMatch = boardBlock.match(/(\d+)\s*칸\s*보드판/);
+    const count = numberFromText(countMatch?.[1], 40);
+    return Math.max(4, Math.min(40, count || 40));
+  }
+
+  function parseLessonOneCells(text, cellCount = 40) {
     const block = sectionBlock(text, '칸 목록') || sectionBlock(text, '보드판 칸');
     if (!block) return [];
     return block
@@ -639,13 +647,28 @@
           desc: (plain[2] || `${plain[1].trim()} 칸이에요.`).trim(),
         };
       })
-      .filter((cell) => cell && Number.isInteger(cell.index) && cell.index >= 0 && cell.index < 40)
+      .filter((cell) => cell && Number.isInteger(cell.index) && cell.index >= 0 && cell.index < cellCount)
       .sort((a, b) => a.index - b.index);
   }
 
   function parseBoardImage(text) {
-    const match = text.match(/배경:\s*.*이미지:\s*(https?:\/\/[^\s)]+)/);
-    return match ? match[1].trim() : 'https://gongdo-ai-game.vercel.app/에셋_assets/배경_backgrounds/worldmap.png';
+    const inlineMatch = text.match(/배경:\s*.*이미지:\s*(https?:\/\/[^\s)]+)/);
+    if (inlineMatch) return inlineMatch[1].trim();
+    const lineMatch = text.match(/^-?\s*배경 이미지:\s*(https?:\/\/[^\s]+)\s*$/m);
+    return lineMatch ? lineMatch[1].trim() : '';
+  }
+
+  function parseLessonBackgroundPrompt(text) {
+    const block = sectionBlock(text, '배경');
+    if (!block) return '';
+    return block
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .filter((line) => /^-\s*/.test(line))
+      .map((line) => line.replace(/^-\s*/, '').trim())
+      .filter((line) => !/^배경 이미지:/i.test(line))
+      .join('\n');
   }
 
   function parseMarbleRules(text) {
@@ -677,6 +700,7 @@
     const title = (text.match(/^#\s+(.+)$/m) || [])[1] || '모두의 블루마블';
     const basePlayers = parsePlayers(text, lessonNo);
     const players = parseAbilities(text, basePlayers);
+    const cellCount = parseBoardCellCount(text);
     const isLessonOne = Number(lessonNo) === 1;
     const isPinLesson = Number(lessonNo) === 1 || Number(lessonNo) === 2;
     const usesCellList = Number(lessonNo) === 1 || Number(lessonNo) === 2;
@@ -684,24 +708,27 @@
     return {
       title: title.replace(/^\d+차시\s*[^\s]+\s*/, '').trim(),
       board: {
-        backgroundImageUrl: parseBoardImage(text),
+        backgroundImageUrl: parseBoardImage(text) || (Number(lessonNo) === 3 ? 'https://gongdo-ai-game.vercel.app/에셋_assets/배경_backgrounds/worldmap.png' : ''),
         stageColor: isPinLesson ? parseLessonOneBackgroundColor(text) : '#EFE8D6',
         backgroundColor: isPinLesson ? parseLessonOneBoardColor(text) : '#D8C6A4',
+        cellCount,
+        backgroundPrompt: Number(lessonNo) === 1 ? parseLessonBackgroundPrompt(text) : '',
       },
       rules: parseMarbleRules(text),
       cities: isLessonOne ? [] : parseCities(text),
-      lessonOneCells: usesCellList ? parseLessonOneCells(text) : [],
+      lessonOneCells: usesCellList ? parseLessonOneCells(text, cellCount) : [],
       players,
       bgm: { kind: 'adventure' },
       dice: lessonOneDice || { label: '기본 주사위', emoji: '🎲', theme: 'classic' },
       ui: {
-        hideHud: isLessonOne,
+        hideHud: isPinLesson,
         hideTokens: false,
         showCoordinates: isPinLesson,
         usePinTokens: isPinLesson,
         simpleBoard: isLessonOne,
         disableCellEffects: isLessonOne,
         disableWin: isLessonOne,
+        lessonTheme: isPinLesson ? 'worksheet' : 'default',
       },
     };
   }
@@ -734,6 +761,24 @@
       // 로컬 파서 fallback
     }
     return null;
+  }
+
+  async function resolveLessonOneBackgroundImage(sourceText) {
+    const prompt = parseLessonBackgroundPrompt(sourceText);
+    if (!prompt) return null;
+    if (state.lessonBackgroundCache.has(prompt)) return state.lessonBackgroundCache.get(prompt);
+    const res = await fetch('/api/lesson-background', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, lessonNo: 1 }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data?.message || '배경 이미지를 만들지 못했어요.');
+    }
+    if (!data?.imageUrl) return null;
+    state.lessonBackgroundCache.set(prompt, data.imageUrl);
+    return data.imageUrl;
   }
 
   function isLessonDocumentModified() {
@@ -780,6 +825,10 @@
         }
       }
     }
+    if (Number(lessonNo) === 1 && options.useAiBackgroundImage) {
+      const backgroundImageUrl = await resolveLessonOneBackgroundImage(sourceText);
+      if (backgroundImageUrl) config.board.backgroundImageUrl = backgroundImageUrl;
+    }
     const injected = `<base href="${MARBLE_TEMPLATE_BASE}"><script>window.__GONGDO_MARBLE_CONFIG__=${JSON.stringify(config)};</script>`;
     return template.replace(/<head>/i, `<head>${injected}`);
   }
@@ -802,8 +851,9 @@
         const useAiDice = isPinLesson && isLessonDocumentModified();
         const useAiPins = isPinLesson && isLessonDocumentModified();
         const useAiBoardColor = isPinLesson && isLessonDocumentModified();
+        const useAiBackgroundImage = Number(state.currentLesson) === 1;
         const [html] = await Promise.all([
-          buildPatchedMarbleHtml(editor.value, state.currentLesson, { useAiDice, useAiPins, useAiBoardColor }),
+          buildPatchedMarbleHtml(editor.value, state.currentLesson, { useAiDice, useAiPins, useAiBoardColor, useAiBackgroundImage }),
           wait(5000),
         ]);
         state.lastGeneratedHtml = html;
@@ -817,7 +867,7 @@
         $('#game-status').textContent = `🎲 ${state.currentLesson}차시 모두의 블루마블을 기존 코드 기반으로 업데이트했어요!`;
       } catch (err) {
         console.error(err);
-        $('#game-status').textContent = '⚠️ 블루마블 템플릿을 업데이트하지 못했어요.';
+        $('#game-status').textContent = `⚠️ ${err?.message || '블루마블 템플릿을 업데이트하지 못했어요.'}`;
       } finally {
         hideGeneratingModal();
       }
@@ -1355,9 +1405,9 @@
     if (sender === 'bot') {
       const img = document.createElement('img');
       img.className = 'mascot-img';
-      img.src = './에셋_assets/캐릭터_characters/gongdossem.png';
+      img.src = './에셋_assets/캐릭터_characters/archive/seulgi.png';
       img.alt = '';
-      img.onerror = () => { avatar.textContent = '🦸'; };
+      img.onerror = () => { avatar.textContent = '👧'; };
       avatar.appendChild(img);
     } else {
       avatar.textContent = '🙋';

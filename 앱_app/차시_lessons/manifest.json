@@ -14,7 +14,7 @@
       "emoji": "🎲",
       "file": "lesson1.md",
       "guide_file": "lesson1_guide.md",
-      "subtitle": "핀과 주사위, 40칸 보드판 뼈대를 만들어요",
+      "subtitle": "핀과 주사위, 12칸 보드판 뼈대를 만들어요",
       "duration_min": 40,
       "goal": "핀, 주사위, 배경이 있는 보드게임 기본 화면 만들기"
     },
@@ -25,7 +25,7 @@
       "emoji": "🌍",
       "file": "lesson2.md",
       "guide_file": "lesson2_guide.md",
-      "subtitle": "도시 이름과 설명, 가격을 넣어 규칙을 확장해요",
+      "subtitle": "12칸 보드에 도시 이름과 설명, 가격을 넣어요",
       "duration_min": 40,
       "goal": "도시 칸의 가격과 설명, 통행료 규칙 추가"
     },
@@ -36,9 +36,9 @@
       "emoji": "🎨",
       "file": "lesson3.md",
       "guide_file": "lesson3_guide.md",
-      "subtitle": "넷마블 캐릭터와 지구본 맵을 넣어요",
+      "subtitle": "데니스와 슬기, 지구본 맵으로 분위기를 완성해요",
       "duration_min": 40,
-      "goal": "캐릭터 4종과 특수 능력, 맵 연출 추가"
+      "goal": "캐릭터 연출과 지도 배경으로 게임 완성도 높이기"
     },
     {
       "no": 4,

@@ -64,6 +64,133 @@
     background-repeat:no-repeat;
     user-select:none;
   }
+  .board.board-theme-worksheet{
+    inset:12px;
+    border:4px solid var(--color-black);
+    border-radius:20px;
+    background-color:var(--board-color, #d8c6a4);
+    background-image:var(--board-bg, none);
+    background-size:cover;
+    background-position:center center;
+    background-repeat:no-repeat;
+    box-shadow:0 6px 0 rgba(26,26,26,.22);
+    overflow:hidden;
+  }
+  .board.board-theme-worksheet::before{
+    content:'';
+    position:absolute;left:0;right:0;top:40px;height:3px;
+    background:var(--color-black);
+    opacity:.85;
+    z-index:3;
+  }
+  .board.board-theme-worksheet::after{
+    content:'';
+    position:absolute;inset:0;
+    border-radius:inherit;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.04) 14%),
+      radial-gradient(circle at 50% 50%, rgba(247,240,223,.28) 0%, rgba(239,226,184,.36) 100%);
+    pointer-events:none;
+    z-index:1;
+  }
+  .worksheet-topbar{
+    position:absolute;left:0;right:0;top:0;height:40px;
+    display:flex;align-items:center;gap:10px;
+    padding:0 14px;
+    background:rgba(245,237,214,.9);
+    z-index:3;
+  }
+  .worksheet-logo{
+    font-family:'Gaegu','Nanum Gothic',sans-serif;
+    font-size:18px;
+    font-weight:700;
+    color:var(--color-black);
+    line-height:1;
+  }
+  .worksheet-topbar-spacer{flex:1}
+  .worksheet-hud{
+    display:flex;gap:8px;align-items:center;
+  }
+  .worksheet-chip{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:4px 8px;
+    border:2px solid var(--color-black);
+    border-radius:6px;
+    background:#fffaf0;
+    font-family:'Gaegu','Nanum Gothic',sans-serif;
+    font-size:13px;
+    font-weight:700;
+    color:var(--color-black);
+    box-shadow:2px 2px 0 rgba(26,26,26,.18);
+    line-height:1;
+  }
+  .worksheet-chip.gold{background:var(--color-yellow)}
+  .worksheet-chip.turn{background:var(--color-red);color:var(--color-cream)}
+  .worksheet-center-title{
+    position:absolute;
+    left:50%;
+    top:45%;
+    transform:translate(-50%,-50%) rotate(-2deg);
+    font-family:'Nanum Pen Script','Gaegu',cursive;
+    font-size:34px;
+    line-height:1.2;
+    text-align:center;
+    color:var(--color-black);
+    pointer-events:none;
+  }
+  .worksheet-deck{
+    position:absolute;
+    left:50%;
+    top:56%;
+    transform:translateX(-50%);
+    display:flex;
+    gap:10px;
+    pointer-events:none;
+  }
+  .worksheet-deck-card{
+    width:60px;height:80px;
+    border:3px solid var(--color-black);
+    border-radius:8px;
+    background:#fffaf0;
+    display:flex;align-items:center;justify-content:center;
+    text-align:center;
+    padding:4px;
+    box-shadow:3px 3px 0 rgba(26,26,26,.22);
+    font-family:'Gaegu','Nanum Gothic',sans-serif;
+    font-size:13px;
+    font-weight:700;
+    line-height:1.15;
+    color:var(--color-black);
+  }
+  .worksheet-deck-card.gold{background:var(--color-yellow)}
+  .worksheet-deck-card.red{background:var(--color-red);color:var(--color-cream)}
+  .worksheet-turn-note{
+    position:absolute;
+    left:50%;
+    top:62%;
+    transform:translateX(-50%);
+    font-family:'Gaegu','Nanum Gothic',sans-serif;
+    font-size:14px;
+    font-weight:700;
+    color:var(--color-brown);
+    background:rgba(255, 248, 236, 0.92);
+    padding:3px 10px;
+    border-radius:999px;
+    border:2px solid rgba(26,26,26,.18);
+    pointer-events:none;
+  }
+  .worksheet-ai-badge{
+    position:absolute;left:34px;bottom:18px;
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:12px;font-weight:800;color:var(--color-black);
+    pointer-events:none;
+  }
+  .worksheet-ai-face{
+    width:28px;height:28px;border-radius:50%;
+    border:2px solid var(--color-black);
+    background:linear-gradient(180deg,#ffd66b,#f7c548);
+    box-shadow:2px 2px 0 rgba(26,26,26,.22);
+  }
   /* 셀 핫스팟 (배경 이미지 위) — 40칸이라 작게 */
   .cell{
     position:absolute;width:4%;aspect-ratio:1;
@@ -82,6 +209,48 @@
     border-color:rgba(26,26,26,.35);
     background:rgba(255,248,236,.85);
     box-shadow:1px 1px 0 rgba(26,26,26,.35);
+  }
+  .board.board-theme-worksheet .cell{
+    width:6.9%;
+    border:3px solid var(--color-black);
+    border-radius:0;
+    background:#fffaf0;
+    box-shadow:none;
+    z-index:2;
+  }
+  .board.board-theme-worksheet .cell:hover{
+    background:#fff4d8;
+    border-color:var(--color-black);
+  }
+  .board.board-theme-worksheet .cell.show-coordinates{
+    background:#fffaf0;
+    border-color:var(--color-black);
+    box-shadow:none;
+  }
+  .board.board-theme-worksheet .cell.type-start,
+  .board.board-theme-worksheet .cell.type-space{
+    background:var(--color-red);
+    color:var(--color-cream);
+  }
+  .board.board-theme-worksheet .cell.type-city{
+    background:#fffaf0;
+  }
+  .board.board-theme-worksheet .cell.type-event,
+  .board.board-theme-worksheet .cell.type-bonus{
+    background:#ffcf57;
+  }
+  .board.board-theme-worksheet .cell.type-tax,
+  .board.board-theme-worksheet .cell.type-travel{
+    background:#b8d1e5;
+  }
+  .board.board-theme-worksheet .cell.type-jail{
+    background:#ec8498;
+  }
+  .board.board-theme-worksheet .cell-index{
+    left:8px;top:8px;transform:none;
+    min-width:16px;height:16px;padding:0 3px;
+    background:#fff;
+    font-size:9px;
   }
   .cell-index{
     position:absolute;left:50%;top:50%;
@@ -151,6 +320,18 @@
   .token.pin-token .token-name{
     top:calc(100% + 14px);
   }
+  .board.board-theme-worksheet .token.pin-token{
+    width:28px;height:28px;
+    border-width:2px;
+  }
+  .board.board-theme-worksheet .token-name{
+    background:#fff9ee;
+    color:var(--color-black);
+    border:2px solid var(--color-black);
+    box-shadow:1px 1px 0 rgba(26,26,26,.22);
+    font-size:9px;
+    font-family:'Gaegu','Nanum Gothic',sans-serif;
+  }
   .roll-btn .roll-emoji{
     font-size:22px;line-height:1;
     display:inline-flex;align-items:center;justify-content:center;
@@ -178,7 +359,7 @@
   }
   /* ── 주사위 버튼 ──────────────────────────────────────── */
   .roll-btn{
-    position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+    position:absolute;left:50%;bottom:42px;transform:translateX(-50%);
     background:var(--color-red);color:var(--color-cream);
     border:var(--outline-width) solid var(--color-black);border-radius:14px;
     padding:12px 26px;font-family:var(--font-display);font-size:18px;font-weight:800;
@@ -331,7 +512,7 @@
 (function(){
   'use strict';
 
-  const DEFAULT_CELLS = [
+  const DEFAULT_CELLS_40 = [
     // 0  N corner — 출발
     { x:50.0, y:29.5, type:'start',  label:'출발',           ico:'🚩', desc:'한 바퀴 돌면 월급 +2,000골드!' },
     // 1-9  N → E (perp 방향: +0.3x, -0.4y)
@@ -382,16 +563,119 @@
     { x:47.1, y:31.6, type:'city',   label:'런던',           ico:'🎡', desc:'안개와 빅벤의 도시.' },
   ];
 
-  const DEFAULT_CITY_DATA = DEFAULT_CELLS
-    .map((cell, idx) => ({ cell, idx }))
-    .filter(({ cell }) => cell.type === 'city')
-    .map(({ cell, idx }) => ({
-      index: idx,
-      label: cell.label,
-      landmark: cell.desc,
-      toll: 1500 + idx * 200,
-      ico: cell.ico,
-    }));
+  const DEFAULT_CITY_NAMES = [
+    ['서울', '경복궁이 있는 도시.', '🏯'],
+    ['도쿄', '도쿄타워가 있는 도시.', '🗼'],
+    ['파리', '에펠탑의 도시.', '🗼'],
+    ['카이로', '피라미드의 도시.', '🐫'],
+    ['뉴욕', '자유의여신상의 도시.', '🗽'],
+    ['런던', '빅벤의 도시.', '🎡'],
+    ['베이징', '만리장성의 도시.', '🐼'],
+    ['시드니', '오페라하우스의 도시.', '🦘'],
+  ];
+
+  function createLoopCells(count) {
+    if (count === 40) return DEFAULT_CELLS_40.map((cell) => ({ ...cell }));
+    const safeCount = Math.max(4, Math.min(40, Number(count) || 12));
+    const citySlots = new Set([1, 2, 4, 7, 9, safeCount - 1]);
+    const specialByIndex = new Map([
+      [0, { type:'start', label:'출발', ico:'🚩', desc:'한 바퀴 돌면 월급 +2,000골드!' }],
+      [Math.min(3, safeCount - 1), { type:'event', label:'황금카드', ico:'🎴', desc:'카드를 뽑으면 골드가 늘거나 줄어요.' }],
+      [Math.min(5, safeCount - 1), { type:'jail', label:'무인도', ico:'🏝️', desc:'무인도! 3턴 동안 주사위를 못 굴려요.' }],
+      [Math.min(6, safeCount - 1), { type:'bonus', label:'사회복지', ico:'🎁', desc:'고마워요! +2,000골드.' }],
+      [Math.min(8, safeCount - 1), { type:'travel', label:'여행', ico:'✈️', desc:'다른 도시 칸으로 이동해요!' }],
+      [Math.min(10, safeCount - 1), { type:'tax', label:'세금', ico:'💰', desc:'세금 -1,000골드.' }],
+    ]);
+    let cityIndex = 0;
+    return Array.from({ length: safeCount }, (_, index) => {
+      const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / safeCount);
+      const x = 50 + 25 * Math.cos(angle);
+      const y = 50 + 19 * Math.sin(angle);
+      const special = specialByIndex.get(index);
+      if (special && !citySlots.has(index)) return { x, y, ...special };
+      const [label, desc, ico] = DEFAULT_CITY_NAMES[cityIndex % DEFAULT_CITY_NAMES.length];
+      cityIndex += 1;
+      return { x, y, type:'city', label, ico, desc };
+    });
+  }
+
+  function buildDefaultCityData(cells) {
+    return cells
+      .map((cell, idx) => ({ cell, idx }))
+      .filter(({ cell }) => cell.type === 'city')
+      .map(({ cell, idx }, order) => ({
+        index: idx,
+        label: cell.label,
+        landmark: cell.desc,
+        toll: 5000 + order * 1000,
+        ico: cell.ico,
+      }));
+  }
+
+  function createWorksheetCells(count) {
+    const safeCount = Math.max(4, Math.min(40, Number(count) || 12));
+    const left = 18.8;
+    const right = 81.2;
+    const top = 22.4;
+    const bottom = 81.6;
+    const width = right - left;
+    const height = bottom - top;
+    const perimeter = (width * 2) + (height * 2);
+    const step = perimeter / safeCount;
+    const baseCells = [
+      { type:'start',  label:'출발',     ico:'🚩', desc:'한 바퀴 돌면 월급 +2,000골드!' },
+      { type:'city',   label:'서울',     ico:'🏯', desc:'아름다운 한국의 수도.' },
+      { type:'event',  label:'황금카드', ico:'🎴', desc:'카드를 뽑으면 골드가 늘거나 줄어요.' },
+      { type:'city',   label:'부산',     ico:'🌊', desc:'바다와 광안대교의 도시.' },
+      { type:'tax',    label:'세금',     ico:'💰', desc:'세금 -1,000골드.' },
+      { type:'travel', label:'여행',     ico:'✈️', desc:'다른 도시 칸으로 이동해요!' },
+      { type:'city',   label:'런던',     ico:'🎡', desc:'안개와 빅벤의 도시.' },
+      { type:'city',   label:'도쿄',     ico:'🗼', desc:'도쿄타워가 있는 도시.' },
+      { type:'event',  label:'황금카드', ico:'🎴', desc:'카드를 뽑으면 골드가 늘거나 줄어요.' },
+      { type:'city',   label:'뉴욕',     ico:'🗽', desc:'자유의여신상의 도시.' },
+      { type:'bonus',  label:'보너스',   ico:'🎁', desc:'고마워요! +2,000골드.' },
+      { type:'space',  label:'우주여행', ico:'🚀', desc:'아무 칸으로 텔레포트!' },
+    ];
+
+    return Array.from({ length: safeCount }, (_, index) => {
+      const meta = baseCells[index] || {
+        type: 'city',
+        label: `${index}번 칸`,
+        ico: '📍',
+        desc: `${index}번 칸이에요.`,
+      };
+      const distance = step * index;
+      let x = left;
+      let y = top;
+      if (distance <= width) {
+        x = left + distance;
+        y = top;
+      } else if (distance <= width + height) {
+        x = right;
+        y = top + (distance - width);
+      } else if (distance <= (width * 2) + height) {
+        x = right - (distance - width - height);
+        y = bottom;
+      } else {
+        x = left;
+        y = bottom - (distance - (width * 2) - height);
+      }
+      return { x, y, ...meta };
+    });
+  }
+
+  function detectLessonCellType(label, desc) {
+    const text = `${label || ''} ${desc || ''}`;
+    if (/출발|salary/i.test(text)) return 'start';
+    if (/황금카드|카드/i.test(text)) return 'event';
+    if (/세금/i.test(text)) return 'tax';
+    if (/여행/i.test(text)) return 'travel';
+    if (/무인도/i.test(text)) return 'jail';
+    if (/보너스|사회복지/i.test(text)) return 'bonus';
+    if (/우주여행/i.test(text)) return 'space';
+    if (/도시|서울|도쿄|파리|런던|뉴욕|카이로|부산|광장|초원|숲|바다/i.test(text)) return 'city';
+    return 'plain';
+  }
 
   const DEFAULT_PLAYERS = [
     { id:'dennis', name:'데니스', imageUrl:'https://gongdo-ai-game.vercel.app/에셋_assets/캐릭터_characters/archive/dennis.png', emoji:'👦', isHuman:true },
@@ -410,7 +694,10 @@
   document.documentElement.style.setProperty('--board-bg', `url('${CONFIG.board.backgroundImageUrl}')`);
   document.documentElement.style.setProperty('--stage-color', CONFIG.board.stageColor || '#EFE8D6');
   document.documentElement.style.setProperty('--board-color', CONFIG.board.backgroundColor || '#D8C6A4');
-  const CELLS = buildCells(DEFAULT_CELLS, CONFIG);
+  const BASE_CELLS = CONFIG.ui.lessonTheme === 'worksheet'
+    ? createWorksheetCells(CONFIG.board.cellCount)
+    : createLoopCells(CONFIG.board.cellCount);
+  const CELLS = buildCells(BASE_CELLS, CONFIG);
 
   const state = {
     players: CONFIG.players.map((player, index) => ({
@@ -481,6 +768,7 @@
           || 'https://gongdo-ai-game.vercel.app/에셋_assets/배경_backgrounds/worldmap.png',
         stageColor: config.board?.stageColor || '#EFE8D6',
         backgroundColor: config.board?.backgroundColor || '#D8C6A4',
+        cellCount: Math.max(4, Math.min(40, numberOr(config.board?.cellCount, 40))),
       },
       rules: {
         startGold: numberOr(config.rules?.startGold, 10000),
@@ -504,7 +792,7 @@
         emoji: String(config.dice?.emoji || '🎲').slice(0, 4),
         theme: String(config.dice?.theme || 'classic'),
       },
-      cities: Array.isArray(config.cities) && config.cities.length ? config.cities : DEFAULT_CITY_DATA,
+      cities: Array.isArray(config.cities) && config.cities.length ? config.cities : buildDefaultCityData(createLoopCells(numberOr(config.board?.cellCount, 40))),
       lessonOneCells: Array.isArray(config.lessonOneCells) ? config.lessonOneCells : [],
       players,
       ui: {
@@ -515,13 +803,16 @@
         simpleBoard: !!config.ui?.simpleBoard,
         disableCellEffects: !!config.ui?.disableCellEffects,
         disableWin: !!config.ui?.disableWin,
+        lessonTheme: String(config.ui?.lessonTheme || 'default'),
       },
     };
   }
 
   function buildCells(defaultCells, config) {
     if (config.ui?.simpleBoard) {
-      document.documentElement.style.setProperty('--board-bg', 'none');
+      if (!config.board?.backgroundImageUrl) {
+        document.documentElement.style.setProperty('--board-bg', 'none');
+      }
       const customCells = new Map((config.lessonOneCells || []).map((cell) => [cell.index, cell]));
       return defaultCells.map((cell, index) => {
         const custom = customCells.get(index);
@@ -529,9 +820,9 @@
         const desc = custom?.desc || `${label} 칸이에요.`;
         return {
           ...cell,
-          type: 'plain',
+          type: detectLessonCellType(label, desc),
           label,
-          ico: '📍',
+          ico: cell.ico || '📍',
           desc,
           ownerId: null,
           price: 0,
@@ -587,17 +878,19 @@
   }
 
   function getCellOutward(idx) {
-    if (idx === 0) return { dx: 0, dy: -5 };
-    if (idx === 10) return { dx: 5, dy: 0 };
-    if (idx === 20) return { dx: 0, dy: 5 };
-    if (idx === 30) return { dx: -5, dy: 0 };
-    if (idx >= 1 && idx <= 9) return { dx: 3, dy: -4 };
-    if (idx >= 11 && idx <= 19) return { dx: 3, dy: 4 };
-    if (idx >= 21 && idx <= 29) return { dx: -3, dy: 4 };
-    return { dx: -3, dy: -4 };
+    const cell = CELLS[idx];
+    if (!cell) return { dx: 0, dy: 0 };
+    const dx = cell.x - 50;
+    const dy = cell.y - 50;
+    const length = Math.hypot(dx, dy) || 1;
+    return {
+      dx: Math.round((dx / length) * 5),
+      dy: Math.round((dy / length) * 5),
+    };
   }
 
   function renderCells() {
+    const cellSize = CELLS.length <= 12 ? 8.5 : (CELLS.length <= 20 ? 6.2 : 4.8);
     CELLS.forEach((cell, index) => {
       const el = document.createElement('div');
       el.className = `cell type-${cell.type}`;
@@ -605,6 +898,7 @@
       el.dataset.idx = index;
       el.style.left = `${cell.x}%`;
       el.style.top = `${cell.y}%`;
+      el.style.width = `${cellSize}%`;
       el.title = `${index}. ${cell.label}`;
       if (CONFIG.ui.showCoordinates) {
         const badge = document.createElement('span');
@@ -615,6 +909,48 @@
       el.addEventListener('click', () => showCellInfo(index));
       board.appendChild(el);
     });
+  }
+
+  function renderWorksheetDecorations() {
+    if (CONFIG.ui.lessonTheme !== 'worksheet') return;
+    board.classList.add('board-theme-worksheet');
+    const topbar = document.createElement('div');
+    topbar.className = 'worksheet-topbar';
+    topbar.innerHTML = `
+      <div class="worksheet-logo">🎲 블루마블</div>
+      <div class="worksheet-topbar-spacer"></div>
+      <div class="worksheet-hud">
+        <span class="worksheet-chip gold" id="worksheet-gold">🪙 10,000</span>
+        <span class="worksheet-chip" id="worksheet-pos">📍 0번칸</span>
+        <span class="worksheet-chip turn" id="worksheet-turn">▶ 내 차례</span>
+      </div>
+    `;
+    board.appendChild(topbar);
+
+    const centerTitle = document.createElement('div');
+    centerTitle.className = 'worksheet-center-title';
+    centerTitle.innerHTML = '모두의<br>블루마블';
+    board.appendChild(centerTitle);
+
+    const deck = document.createElement('div');
+    deck.className = 'worksheet-deck';
+    deck.innerHTML = `
+      <div class="worksheet-deck-card gold">황금<br>카드</div>
+      <div class="worksheet-deck-card">기회<br>카드</div>
+      <div class="worksheet-deck-card red">보너스</div>
+    `;
+    board.appendChild(deck);
+
+    const turnNote = document.createElement('div');
+    turnNote.className = 'worksheet-turn-note';
+    turnNote.id = 'worksheet-turn-note';
+    turnNote.textContent = '슬기 차례 · 남은 시간 8s';
+    board.appendChild(turnNote);
+
+    const aiBadge = document.createElement('div');
+    aiBadge.className = 'worksheet-ai-badge';
+    aiBadge.innerHTML = '<span class="worksheet-ai-face"></span><span>슬기 AI</span>';
+    board.appendChild(aiBadge);
   }
 
   function renderHud() {
@@ -701,6 +1037,23 @@
     if (turnChip) {
       turnChip.textContent = `▶ ${current ? current.name : ''} 차례`;
       turnChip.classList.toggle('is-ai', !!isAI);
+    }
+    const worksheetGold = document.getElementById('worksheet-gold');
+    if (worksheetGold) {
+      const me = state.players[0];
+      worksheetGold.textContent = `🪙 ${(me?.gold || 0).toLocaleString()}`;
+    }
+    const worksheetPos = document.getElementById('worksheet-pos');
+    if (worksheetPos) {
+      worksheetPos.textContent = `📍 ${current ? current.pos : 0}번칸`;
+    }
+    const worksheetTurn = document.getElementById('worksheet-turn');
+    if (worksheetTurn) {
+      worksheetTurn.textContent = `▶ ${current ? current.name : ''} 차례`;
+    }
+    const worksheetTurnNote = document.getElementById('worksheet-turn-note');
+    if (worksheetTurnNote) {
+      worksheetTurnNote.textContent = `${current ? current.name : '플레이어'} 차례`;
     }
     rollBtn.disabled = state.busy || !!state.winner || isAI;
   }
@@ -934,6 +1287,10 @@
       case 'travel': {
         let next = (player.pos + 1) % CELLS.length;
         while (next !== player.pos && CELLS[next].type !== 'travel') next = (next + 1) % CELLS.length;
+        if (next === player.pos) {
+          const cityTargets = CELLS.map((c, i) => ({ c, i })).filter(({ c, i }) => i !== player.pos && c.type === 'city');
+          next = cityTargets.length ? cityTargets[Math.floor(Math.random() * cityTargets.length)].i : player.pos;
+        }
         const passedStart = next < player.pos;
         player.pos = next;
         if (passedStart) {
@@ -1090,6 +1447,7 @@
   }
   document.addEventListener('click', startBGM, { once:true });
 
+  renderWorksheetDecorations();
   renderCells();
   renderHud();
   renderTokens();

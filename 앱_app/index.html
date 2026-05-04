@@ -307,9 +307,17 @@
       </div>
       <div class="game-viewport" id="game-viewport">
         <div class="game-placeholder" aria-hidden="true">
-          <img class="placeholder-love" src="./에셋_assets/캐릭터_characters/welcome_love.png" alt=""
-               onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'placeholder-emoji',textContent:'🚀'}))">
-          <p class="placeholder-text">게임을 기다리고 있어요</p>
+          <div class="placeholder-stage">
+            <div class="placeholder-stage-glow"></div>
+            <div class="placeholder-board-preview">
+              <span class="placeholder-token placeholder-token-dennis">데니스</span>
+              <span class="placeholder-token placeholder-token-seulgi">슬기</span>
+              <span class="placeholder-chip placeholder-chip-start">출발</span>
+              <span class="placeholder-chip placeholder-chip-city">도시</span>
+              <span class="placeholder-chip placeholder-chip-card">황금카드</span>
+            </div>
+          </div>
+          <p class="placeholder-text">차시 문서를 열고 시작을 누르면 여기에서 게임이 바로 보여요</p>
         </div>
       </div>
     </section>
@@ -324,8 +332,8 @@
     aria-label="공도쌤 AI튜터 열기"
     aria-controls="tutor-drawer"
     aria-expanded="false">
-    <img class="tutor-fab-avatar mascot-img" src="./에셋_assets/캐릭터_characters/gongdossem.png" alt="" aria-hidden="true"
-         onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'tutor-fab-avatar',textContent:'🦸'}))">
+    <img class="tutor-fab-avatar mascot-img" src="./에셋_assets/캐릭터_characters/archive/seulgi.png" alt="" aria-hidden="true"
+         onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'tutor-fab-avatar',textContent:'👧'}))">
     <span class="tutor-fab-label">AI튜터</span>
     <span class="tutor-fab-pulse" aria-hidden="true"></span>
   </button>
@@ -334,10 +342,6 @@
   <aside class="tutor-drawer" id="tutor-drawer" role="dialog" aria-modal="false" aria-labelledby="tutor-drawer-title" hidden>
     <header class="drawer-head">
       <h2 id="tutor-drawer-title" class="drawer-head-title">
-        <span class="drawer-head-avatar" aria-hidden="true">
-          <img class="mascot-img" src="./에셋_assets/캐릭터_characters/gongdossem.png" alt=""
-               onerror="this.replaceWith(document.createTextNode('🦸'))">
-        </span>
         공도쌤에게 물어보기
       </h2>
       <button type="button" class="drawer-close" id="tutor-close" aria-label="AI튜터 닫기">
@@ -347,8 +351,8 @@
     <div class="tutor-messages" id="tutor-messages" role="log" aria-live="polite" aria-label="튜터 대화 내용">
       <div class="tutor-message tutor-message-bot">
         <span class="tutor-avatar" aria-hidden="true">
-          <img class="mascot-img" src="./에셋_assets/캐릭터_characters/gongdossem.png" alt=""
-               onerror="this.replaceWith(document.createTextNode('🦸'))">
+          <img class="mascot-img" src="./에셋_assets/캐릭터_characters/archive/seulgi.png" alt=""
+               onerror="this.replaceWith(document.createTextNode('👧'))">
         </span>
         <div class="tutor-bubble">
           안녕하세요! 저는 공도쌤이에요. 🌟<br>
@@ -452,8 +456,8 @@
   <div id="generating-modal" class="modal-overlay" hidden role="status" aria-live="polite" aria-labelledby="gen-title">
     <div class="modal-card generating-card">
       <div class="gen-character" aria-hidden="true">
-        <img class="mascot-img mascot-img-xl" src="./에셋_assets/캐릭터_characters/gongdossem.png" alt="공도쌤"
-             onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'🦸',style:'font-size:84px'}))">
+        <img class="mascot-img mascot-img-xl" src="./에셋_assets/캐릭터_characters/archive/seulgi.png" alt="공도쌤"
+             onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'👧',style:'font-size:84px'}))">
       </div>
       <h2 id="gen-title" class="gen-title">AI가 게임을 만들고 있어요</h2>
       <p id="gen-message" class="gen-message">우주선에 시동을 걸어요... 🚀</p>

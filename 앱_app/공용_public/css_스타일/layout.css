@@ -196,16 +196,17 @@ body.is-resizing iframe {
   position: fixed;
   right: 24px;
   bottom: 24px;
-  width: 76px;
-  height: 96px;
+  width: 92px;
+  height: 92px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 4px;
+  padding: 8px;
   background: var(--color-red);
   border: var(--outline-width) solid var(--color-black);
-  border-radius: 50% 50% 50% 50% / 42% 42% 58% 58%;
+  border-radius: 50%;
   color: var(--color-cream);
   box-shadow: var(--shadow-toon);
   cursor: pointer;
@@ -241,8 +242,9 @@ body.is-resizing iframe {
 .tutor-fab-label {
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.2px;
   text-shadow: 1px 1px 0 var(--color-black);
+  line-height: 1;
 }
 
 .tutor-fab-pulse {

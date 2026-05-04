@@ -25,6 +25,7 @@ gcloud services enable secretmanager.googleapis.com --project="$PROJECT_ID" --qu
 # 등록할 시크릿 목록
 SECRETS=(
   "ANTHROPIC_API_KEY"
+  "OPENAI_API_KEY"
   "KV_REST_API_URL"
   "KV_REST_API_TOKEN"
   "SUPABASE_URL"
