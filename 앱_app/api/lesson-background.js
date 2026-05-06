@@ -18,18 +18,18 @@ function parseBody(body) {
 function buildPrompt(rawPrompt) {
   const prompt = String(rawPrompt || '').trim();
   return [
-    'Create a background illustration for an elementary-school board game.',
-    'Use the student description below as the main source of truth.',
+    'Create a background illustration that will be placed BEHIND a square 12-cell board game board.',
+    'The student description below tells you what the scene should look like — follow it as the main source of truth.',
     '',
     '[Student background notes]',
     prompt,
     '',
     '[Art direction]',
     'Soft, warm, classroom-friendly digital illustration.',
-    'Light sky-blue atmosphere with cozy cream-white clouds and gentle sunlight.',
-    'Landscape composition for a board game screen, with broad calm space in the middle.',
-    'Background only: no characters, no text, no logos, no game pieces, no borders.',
-    'Keep the image friendly, clean, and suitable for Korean elementary students.',
+    'The image will be tiled to "cover" a square game board area, so keep the composition centered and low-detail in the middle (calm sky, sea, fields, etc.) — important visual elements toward the edges.',
+    'No characters, no text, no logos, no UI elements, no game pieces, no borders, no frames, no captions.',
+    'No tiny intricate details that fight with overlaid game cells; broad shapes and gentle gradients only.',
+    'Friendly, clean, and suitable for Korean elementary students.',
   ].join('\n');
 }
 

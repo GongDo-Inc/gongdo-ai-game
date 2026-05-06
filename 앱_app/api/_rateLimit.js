@@ -47,8 +47,16 @@ function normalizeKey(scope, id, ip) {
 }
 
 let kvModule = null;
+let kvDisabled = false; // 첫 KV 호출이 실패하면 영구 비활성 (DNS 실패 무한 반복 방지)
 async function getKv() {
-  if (!process.env.KV_REST_API_URL || !process.env.KV_REST_API_TOKEN) return null;
+  if (kvDisabled) return null;
+  const url = process.env.KV_REST_API_URL || '';
+  const token = process.env.KV_REST_API_TOKEN || '';
+  if (!url || !token) return null;
+  // .env.example 의 플레이스홀더 값 차단 (xxx.upstash.io 류)
+  if (/^https?:\/\/x{3,}/i.test(url) || /^x{3,}/i.test(url) || /^x{3,}/i.test(token)) {
+    return null;
+  }
   if (!kvModule) {
     try {
       kvModule = await import('@vercel/kv');
@@ -73,9 +81,19 @@ export async function checkAndIncrement(scope, id, limit, ip = '') {
 
   let used;
   if (kv) {
-    used = await kv.incr(key);
-    if (used === 1) await kv.expire(key, 90); // 90초 TTL
-  } else {
+    try {
+      used = await kv.incr(key);
+      if (used === 1) await kv.expire(key, 90); // 90초 TTL
+    } catch (err) {
+      // KV 호출 실패 (DNS·인증 등) — 영구 비활성 후 인메모리로 폴백
+      // (이전엔 여기서 throw 가 그대로 핸들러로 전파되어 /api/chat 가 500 으로 죽음)
+      // eslint-disable-next-line no-console
+      console.warn('[rate-limit] KV 호출 실패 → 인메모리 폴백 영구 사용:', err?.message || err);
+      kvDisabled = true;
+      used = null;
+    }
+  }
+  if (used == null) {
     // 인메모리 폴백 (재시작 시 초기화)
     const record = memStore.get(key) || { count: 0, expires: Date.now() + 90_000 };
     record.count += 1;

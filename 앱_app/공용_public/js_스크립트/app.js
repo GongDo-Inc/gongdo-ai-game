@@ -467,7 +467,8 @@
   }
 
   function parseLessonOneBackgroundColor(text) {
-    const backgroundBlock = sectionBlock(text, '배경');
+    // "### 보드 배경" (1차시) 와 "### 배경" (3차시 등) 모두 허용
+    const backgroundBlock = sectionBlock(text, '보드 배경') || sectionBlock(text, '배경');
     const candidates = [].concat(backgroundBlock ? backgroundBlock.split('\n') : []);
     for (const line of candidates.map((value) => value.trim())) {
       if (!line) continue;
@@ -480,6 +481,9 @@
   }
 
   function parseLessonOneBoardColor(text) {
+    // "## 보드 색상" 섹션은 이미지 생성 전용 경로 (parseLessonBackgroundPrompt 참고).
+    // → 단순 색상명도 이미지 프롬프트로 보내고, 보드판 fallback 색은 기본값으로 둠.
+    // 호환: 구버전 "## 보드판" 섹션의 "보드 색상:" 줄만 색상으로 인식.
     const boardBlock = sectionBlock(text, '보드판');
     const candidates = [].concat(boardBlock ? boardBlock.split('\n') : []);
     for (const line of candidates.map((value) => value.trim())) {
@@ -618,12 +622,16 @@
 
   function parseBoardCellCount(text) {
     const boardBlock = sectionBlock(text, '보드판') || text;
-    const countMatch = boardBlock.match(/(\d+)\s*칸\s*보드판/);
-    const count = numberFromText(countMatch?.[1], 40);
-    return Math.max(4, Math.min(40, count || 40));
+    // 「12칸 보드판」 또는 그냥 텍스트 어디든 「N칸 보드판」 패턴 우선
+    const countMatch =
+      boardBlock.match(/(\d+)\s*칸\s*보드판/) ||
+      boardBlock.match(/보드판[^\n]*?(\d+)\s*칸/) ||
+      text.match(/(\d+)\s*칸\s*보드판/);
+    const count = numberFromText(countMatch?.[1], 12);
+    return Math.max(4, Math.min(40, count || 12));
   }
 
-  function parseLessonOneCells(text, cellCount = 40) {
+  function parseLessonOneCells(text, cellCount = 12) {
     const block = sectionBlock(text, '칸 목록') || sectionBlock(text, '보드판 칸');
     if (!block) return [];
     return block
@@ -659,16 +667,44 @@
   }
 
   function parseLessonBackgroundPrompt(text) {
-    const block = sectionBlock(text, '배경');
-    if (!block) return '';
-    return block
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .filter((line) => /^-\s*/.test(line))
-      .map((line) => line.replace(/^-\s*/, '').trim())
-      .filter((line) => !/^배경 이미지:/i.test(line))
-      .join('\n');
+    const collected = [];
+    // 1차 소스: "## 보드 색상" 섹션 (lesson1.md v1.1.0+).
+    // "기본 보드"만 제외하고, 단순 색상명("하늘색")이든 풍부한 묘사("노을 하늘처럼")든
+    // 변경된 내용은 모두 AI 이미지 프롬프트로 보내 보드판에 이미지로 적용한다.
+    const colorBlock = sectionBlock(text, '보드 색상');
+    if (colorBlock) {
+      colorBlock
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => /^-\s*/.test(line))
+        .map((line) => line.replace(/^-\s*/, '').trim())
+        .filter((line) => line && !/^기본\s*보드$/.test(line))
+        .forEach((line) => collected.push(line));
+    }
+    // 호환: 구버전 "### 보드 배경" / "### 배경" 섹션
+    const bgBlock = sectionBlock(text, '보드 배경') || sectionBlock(text, '배경');
+    if (bgBlock) {
+      bgBlock
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => /^-\s*/.test(line))
+        .map((line) => line.replace(/^-\s*/, '').trim())
+        .filter((line) => !/^배경 이미지:/i.test(line))
+        // "기본 배경" — 그림 생성 없이 깔끔한 보드 색만 사용 (학생이 명시적으로 묘사 안 한 경우)
+        .filter((line) => !/^기본\s*배경$/.test(line))
+        .forEach((line) => collected.push(line));
+    }
+    // 호환: 구버전 "## 보드판" 섹션의 "보드 색상:" 줄 (풍부한 묘사일 때만)
+    const boardBlock = sectionBlock(text, '보드판');
+    if (boardBlock) {
+      boardBlock.split('\n').forEach((line) => {
+        const m = line.trim().match(/^-\s*보드\s*색상[:：]?\s*(.+)$/);
+        if (!m) return;
+        const v = m[1].trim();
+        if (v.length >= 6 && /\s/.test(v)) collected.push(v);
+      });
+    }
+    return collected.join('\n');
   }
 
   function parseMarbleRules(text) {
@@ -718,7 +754,7 @@
       cities: isLessonOne ? [] : parseCities(text),
       lessonOneCells: usesCellList ? parseLessonOneCells(text, cellCount) : [],
       players,
-      bgm: { kind: 'adventure' },
+      bgm: { kind: 'off' },
       dice: lessonOneDice || { label: '기본 주사위', emoji: '🎲', theme: 'classic' },
       ui: {
         hideHud: isPinLesson,
@@ -765,20 +801,43 @@
 
   async function resolveLessonOneBackgroundImage(sourceText) {
     const prompt = parseLessonBackgroundPrompt(sourceText);
-    if (!prompt) return null;
-    if (state.lessonBackgroundCache.has(prompt)) return state.lessonBackgroundCache.get(prompt);
-    const res = await fetch('/api/lesson-background', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, lessonNo: 1 }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(data?.message || '배경 이미지를 만들지 못했어요.');
+    if (!prompt) {
+      console.info('[배경 이미지] 프롬프트 비어있음 — 이미지 생성 skip ("## 보드 색상"이 "기본 보드"이거나 단순 색상명)');
+      return null;
     }
-    if (!data?.imageUrl) return null;
-    state.lessonBackgroundCache.set(prompt, data.imageUrl);
-    return data.imageUrl;
+    if (state.lessonBackgroundCache.has(prompt)) {
+      console.info('[배경 이미지] 캐시 히트 (같은 프롬프트 재사용):', prompt);
+      return state.lessonBackgroundCache.get(prompt);
+    }
+    console.info('[배경 이미지] 생성 시작 — 프롬프트:', prompt);
+    const genMsg = $('#gen-message');
+    const prevMsg = genMsg?.textContent || '';
+    if (genMsg) genMsg.textContent = '🎨 AI가 보드판 배경을 그리고 있어요... (10~20초)';
+    const t0 = Date.now();
+    try {
+      const res = await fetch('/api/lesson-background', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, lessonNo: 1 }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        console.warn('[배경 이미지] /api/lesson-background 실패:', res.status, data?.error, data?.message);
+        return null;
+      }
+      if (!data?.imageUrl) {
+        console.warn('[배경 이미지] 응답에 imageUrl 없음:', data);
+        return null;
+      }
+      console.info(`[배경 이미지] 생성 성공 (${Date.now()-t0}ms, ${(data.imageUrl.length/1024).toFixed(0)}KB)`);
+      state.lessonBackgroundCache.set(prompt, data.imageUrl);
+      return data.imageUrl;
+    } catch (err) {
+      console.warn('[배경 이미지] 네트워크 예외:', err);
+      return null;
+    } finally {
+      if (genMsg && prevMsg) genMsg.textContent = prevMsg;
+    }
   }
 
   function isLessonDocumentModified() {
@@ -1293,6 +1352,8 @@
           return;
         }
         if (data.error) {
+          // 진단용 콘솔 로그 — ANTHROPIC_API_KEY 미설정 / 502 upstream 등 식별 단서
+          console.warn('[AI튜터] /api/chat 에러:', data.error, data.message);
           appendTutorMessage(data.message || '답하지 못했어요. 다시 물어봐요!', 'bot');
           return;
         }
@@ -1302,6 +1363,7 @@
         appendTutorMessage(displayText, 'bot', { hint, lineNumber });
         state.tutorLog.push({ at: new Date().toISOString(), role: 'bot', text: displayText, hint });
       } catch (err) {
+        console.warn('[AI튜터] 네트워크 예외:', err);
         removePendingTutor();
         appendTutorMessage('공도쌤이 잠깐 쉬고 있어요. 다시 물어봐요!', 'bot');
       }
@@ -1403,11 +1465,12 @@
     avatar.className = 'tutor-avatar';
     avatar.setAttribute('aria-hidden', 'true');
     if (sender === 'bot') {
+      // 위치 4 — 채팅 말풍선 아바타: 데니스
       const img = document.createElement('img');
       img.className = 'mascot-img';
-      img.src = './에셋_assets/캐릭터_characters/archive/seulgi.png';
+      img.src = './에셋_assets/캐릭터_characters/archive/dennis.png';
       img.alt = '';
-      img.onerror = () => { avatar.textContent = '👧'; };
+      img.onerror = () => { avatar.textContent = '👦'; };
       avatar.appendChild(img);
     } else {
       avatar.textContent = '🙋';

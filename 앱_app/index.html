@@ -324,7 +324,7 @@
 
   </main>
 
-  <!-- 플로팅 AI튜터 호출 버튼 (ㅋㅋ 캐릭터) -->
+  <!-- 플로팅 AI튜터 호출 버튼 (위치 2 — 슬기) -->
   <button
     type="button"
     class="tutor-fab"
@@ -342,6 +342,10 @@
   <aside class="tutor-drawer" id="tutor-drawer" role="dialog" aria-modal="false" aria-labelledby="tutor-drawer-title" hidden>
     <header class="drawer-head">
       <h2 id="tutor-drawer-title" class="drawer-head-title">
+        <span class="drawer-head-avatar" aria-hidden="true">
+          <img class="mascot-img" src="./에셋_assets/캐릭터_characters/archive/seulgi.png" alt=""
+               onerror="this.replaceWith(document.createTextNode('👧'))">
+        </span>
         공도쌤에게 물어보기
       </h2>
       <button type="button" class="drawer-close" id="tutor-close" aria-label="AI튜터 닫기">
@@ -351,8 +355,8 @@
     <div class="tutor-messages" id="tutor-messages" role="log" aria-live="polite" aria-label="튜터 대화 내용">
       <div class="tutor-message tutor-message-bot">
         <span class="tutor-avatar" aria-hidden="true">
-          <img class="mascot-img" src="./에셋_assets/캐릭터_characters/archive/seulgi.png" alt=""
-               onerror="this.replaceWith(document.createTextNode('👧'))">
+          <img class="mascot-img" src="./에셋_assets/캐릭터_characters/archive/dennis.png" alt=""
+               onerror="this.replaceWith(document.createTextNode('👦'))">
         </span>
         <div class="tutor-bubble">
           안녕하세요! 저는 공도쌤이에요. 🌟<br>
@@ -452,12 +456,12 @@
     </div>
   </div>
 
-  <!-- AI 게임 생성 중 팝업 -->
+  <!-- AI 게임 생성 중 팝업 (위치 3 — 데니스) -->
   <div id="generating-modal" class="modal-overlay" hidden role="status" aria-live="polite" aria-labelledby="gen-title">
     <div class="modal-card generating-card">
       <div class="gen-character" aria-hidden="true">
-        <img class="mascot-img mascot-img-xl" src="./에셋_assets/캐릭터_characters/archive/seulgi.png" alt="공도쌤"
-             onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'👧',style:'font-size:84px'}))">
+        <img class="mascot-img mascot-img-xl" src="./에셋_assets/캐릭터_characters/archive/dennis.png" alt="공도쌤"
+             onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'👦',style:'font-size:84px'}))">
       </div>
       <h2 id="gen-title" class="gen-title">AI가 게임을 만들고 있어요</h2>
       <p id="gen-message" class="gen-message">우주선에 시동을 걸어요... 🚀</p>
