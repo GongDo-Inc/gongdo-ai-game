@@ -35,10 +35,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&family=D2Coding&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="./공용_public/css_스타일/reset.css">
-  <link rel="stylesheet" href="./공용_public/css_스타일/palette.css">
-  <link rel="stylesheet" href="./공용_public/css_스타일/layout.css">
-  <link rel="stylesheet" href="./공용_public/css_스타일/components.css">
+  <link rel="stylesheet" href="./public/css/reset.css">
+  <link rel="stylesheet" href="./public/css/palette.css">
+  <link rel="stylesheet" href="./public/css/layout.css">
+  <link rel="stylesheet" href="./public/css/components.css">
+  <!-- 3차시 worldmap 배경(465KB) — 앱 로드와 동시에 워밍해 [▶ 시작] 시 즉시 표시 -->
+  <link rel="preload" as="image" href="./assets/backgrounds/worldmap.jpg">
 </head>
 <body>
   <a href="#main-content" class="skip-link">본문으로 건너뛰기</a>
@@ -67,9 +69,6 @@
       <h2 class="pane-title">📚 수업 폴더</h2>
       <nav aria-label="차시 네비게이션">
         <ul class="drawer-tree" id="drawer-lessons" role="tree" aria-label="수업 차시 폴더"></ul>
-        <hr class="drawer-divider">
-        <h3 class="drawer-section-title">🎨 내 작품</h3>
-        <ul class="drawer-tree" id="drawer-myworks" role="tree" aria-label="내 작품 폴더"></ul>
       </nav>
     </aside>
 
@@ -83,13 +82,6 @@
           <button type="button" class="toolbar-btn" id="btn-reset" aria-label="문서 처음으로 되돌리기" aria-expanded="false" aria-controls="reset-confirm-popover">
             <span aria-hidden="true">↻</span> <span class="toolbar-btn-label">처음으로</span>
           </button>
-          <button type="button" class="toolbar-btn" id="btn-variant" aria-label="예시 게임 바꾸기" aria-expanded="false" aria-controls="variant-popover" hidden>
-            <span aria-hidden="true">🎮</span> <span class="toolbar-btn-label">예시</span>
-          </button>
-          <!-- BUNKER-2026-04-28-001: [🔓 예시 활성화하기] (manifest.featureFlags.example.enabled === false 일 때 노출) -->
-          <button type="button" class="toolbar-btn toolbar-btn-unlock" id="btn-variant-unlock" aria-label="예시 활성화하기" aria-haspopup="dialog" hidden>
-            <span aria-hidden="true">🔓</span> <span class="toolbar-btn-label">예시 활성화하기</span>
-          </button>
           <button type="button" class="toolbar-btn" id="btn-code-view" aria-label="진짜 코드 구경하기" aria-expanded="false" aria-controls="code-view-overlay" hidden>
             <span aria-hidden="true">🔍</span> <span class="toolbar-btn-label">코드 구경</span>
           </button>
@@ -99,10 +91,10 @@
             </button>
           </span>
           <button type="button" class="toolbar-btn" id="btn-theme" aria-label="배경 고르기" aria-expanded="false" aria-controls="theme-popover">
-            <span aria-hidden="true">🎨</span> <span class="toolbar-btn-label">배경</span>
+            <span class="character-lock-icon" aria-hidden="true" hidden>🔒</span><span aria-hidden="true">🎨</span> <span class="toolbar-btn-label">배경</span>
           </button>
           <button type="button" class="toolbar-btn" id="btn-bgm" aria-label="배경음악 열기" aria-expanded="false" aria-controls="bgm-popover">
-            <span aria-hidden="true">🎵</span> <span class="toolbar-btn-label" id="btn-bgm-label">음악</span>
+            <span class="character-lock-icon" aria-hidden="true" hidden>🔒</span><span aria-hidden="true">🎵</span> <span class="toolbar-btn-label" id="btn-bgm-label">음악</span>
           </button>
         </div>
 
@@ -134,7 +126,7 @@
           <ul class="character-grid" id="character-grid">
             <li>
               <button type="button" class="character-card" data-char="seulgi" data-label="슬기" data-file="archive/seulgi.png" data-emoji="👧">
-                <img class="character-img" src="./에셋_assets/캐릭터_characters/archive/seulgi.png" alt="슬기 캐릭터"
+                <img class="character-img" src="./assets/characters/archive/seulgi.png" alt="슬기 캐릭터"
                      onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'character-emoji',textContent:'👧'}))">
                 <span class="character-name">슬기</span>
                 <span class="character-desc">밝고 씩씩한 탐험가</span>
@@ -142,7 +134,7 @@
             </li>
             <li>
               <button type="button" class="character-card" data-char="dennis" data-label="데니스" data-file="archive/dennis.png" data-emoji="👦">
-                <img class="character-img" src="./에셋_assets/캐릭터_characters/archive/dennis.png" alt="데니스 캐릭터"
+                <img class="character-img" src="./assets/characters/archive/dennis.png" alt="데니스 캐릭터"
                      onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'character-emoji',textContent:'👦'}))">
                 <span class="character-name">데니스</span>
                 <span class="character-desc">유쾌한 모험 대장</span>
@@ -238,7 +230,8 @@
                 <span class="btn-bgm-toggle-icon" id="btn-bgm-toggle-icon" aria-hidden="true">⏹</span>
                 <span class="btn-bgm-toggle-label" id="btn-bgm-toggle-label">음악 정지</span>
               </button>
-              <button type="button" class="btn btn-primary bgm-action-btn" id="btn-bgm-apply">
+              <!-- 자동 적용으로 변경됨 — 수동 [넣기] 버튼은 hidden, 호환을 위해 DOM 유지 -->
+              <button type="button" class="btn btn-primary bgm-action-btn" id="btn-bgm-apply" hidden>
                 <span aria-hidden="true">✅</span> 이 음악을 내 게임에 넣기
               </button>
             </div>
@@ -247,7 +240,7 @@
               <span id="bgm-apply-text">음악을 게임에 넣는 중...</span>
             </div>
             <p class="bgm-applied-badge" id="bgm-applied-badge" hidden>
-              🎵 <strong id="bgm-applied-mood">—</strong> 음악이 다음 [시작] 때 게임에 들어가요!
+              🎶 <strong id="bgm-applied-mood">—</strong> 음악이 게임에 들어가있어요. 도구바 [⏸/▶] 로 정지·실행할 수 있어요.
               <button type="button" class="bgm-applied-clear" id="bgm-applied-clear" aria-label="게임 음악 취소">✕</button>
             </p>
           </div>
@@ -332,7 +325,7 @@
     aria-label="공도쌤 AI튜터 열기"
     aria-controls="tutor-drawer"
     aria-expanded="false">
-    <img class="tutor-fab-avatar mascot-img" src="./에셋_assets/캐릭터_characters/archive/seulgi.png" alt="" aria-hidden="true"
+    <img class="tutor-fab-avatar mascot-img" src="./assets/characters/archive/seulgi.png" alt="" aria-hidden="true"
          onerror="this.replaceWith(Object.assign(document.createElement('span'),{className:'tutor-fab-avatar',textContent:'👧'}))">
     <span class="tutor-fab-label">AI튜터</span>
     <span class="tutor-fab-pulse" aria-hidden="true"></span>
@@ -343,7 +336,7 @@
     <header class="drawer-head">
       <h2 id="tutor-drawer-title" class="drawer-head-title">
         <span class="drawer-head-avatar" aria-hidden="true">
-          <img class="mascot-img" src="./에셋_assets/캐릭터_characters/archive/seulgi.png" alt=""
+          <img class="mascot-img" src="./assets/characters/archive/seulgi.png" alt=""
                onerror="this.replaceWith(document.createTextNode('👧'))">
         </span>
         공도쌤에게 물어보기
@@ -355,7 +348,7 @@
     <div class="tutor-messages" id="tutor-messages" role="log" aria-live="polite" aria-label="튜터 대화 내용">
       <div class="tutor-message tutor-message-bot">
         <span class="tutor-avatar" aria-hidden="true">
-          <img class="mascot-img" src="./에셋_assets/캐릭터_characters/archive/dennis.png" alt=""
+          <img class="mascot-img" src="./assets/characters/archive/dennis.png" alt=""
                onerror="this.replaceWith(document.createTextNode('👦'))">
         </span>
         <div class="tutor-bubble">
@@ -460,7 +453,7 @@
   <div id="generating-modal" class="modal-overlay" hidden role="status" aria-live="polite" aria-labelledby="gen-title">
     <div class="modal-card generating-card">
       <div class="gen-character" aria-hidden="true">
-        <img class="mascot-img mascot-img-xl" src="./에셋_assets/캐릭터_characters/archive/dennis.png" alt="공도쌤"
+        <img class="mascot-img mascot-img-xl" src="./assets/characters/archive/dennis.png" alt="공도쌤"
              onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'👦',style:'font-size:84px'}))">
       </div>
       <h2 id="gen-title" class="gen-title">AI가 게임을 만들고 있어요</h2>
@@ -583,7 +576,7 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/tone@15.0.4/build/Tone.js"></script>
-  <script src="./공용_public/js_스크립트/bgm.js" defer></script>
-  <script src="./공용_public/js_스크립트/app.js" defer></script>
+  <script src="./public/js/bgm.js" defer></script>
+  <script src="./public/js/app.js" defer></script>
 </body>
 </html>

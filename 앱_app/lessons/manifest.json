@@ -1,0 +1,61 @@
+{
+  "version": "v0.5.0",
+  "updated": "2026-04-30",
+  "featureFlags": {
+    "music":   { "enabled": true, "_note": "도구바 [음악] 버튼. true 로 바꾸면 즉시 활성화됨. (BUNKER-2026-04-28-001)" },
+    "example": { "enabled": false, "_note": "도구바 [예시] 버튼. true 로 바꾸면 즉시 활성화됨. (BUNKER-2026-04-28-001)" },
+    "theme":   { "enabled": true, "_note": "도구바 [배경] 버튼. true 로 바꾸면 즉시 활성화됨. (BUNKER-2026-04-28-003)" }
+  },
+  "lessons": [
+    {
+      "no": 1,
+      "enabled": true,
+      "title": "부루마블 만들기",
+      "emoji": "🎲",
+      "file": "lesson1.md",
+      "guide_file": "lesson1_guide.md",
+      "subtitle": "핀과 주사위, 12칸 보드판 뼈대를 만들어요",
+      "duration_min": 40,
+      "goal": "핀, 주사위, 배경이 있는 보드게임 기본 화면 만들기"
+    },
+    {
+      "no": 2,
+      "enabled": true,
+      "title": "도시별 규칙 만들기",
+      "emoji": "🌍",
+      "file": "lesson2.md",
+      "guide_file": "lesson2_guide.md",
+      "subtitle": "12칸 보드에 도시 이름과 설명, 가격을 넣어요",
+      "duration_min": 40,
+      "goal": "도시 칸의 가격과 설명, 통행료 규칙 추가"
+    },
+    {
+      "no": 3,
+      "enabled": true,
+      "title": "캐릭터 IP + 지구본 맵",
+      "emoji": "🎨",
+      "file": "lesson3.md",
+      "guide_file": "lesson3_guide.md",
+      "subtitle": "데니스와 슬기, 지구본 맵으로 분위기를 완성해요",
+      "duration_min": 40,
+      "goal": "캐릭터 연출과 지도 배경으로 게임 완성도 높이기"
+    },
+    {
+      "no": 4,
+      "enabled": true,
+      "title": "발표 자료 + 공유",
+      "emoji": "📣",
+      "file": "lesson4.md",
+      "guide_file": "lesson4_guide.md",
+      "subtitle": "내 게임을 소개하고 친구들과 공유해요",
+      "duration_min": 40,
+      "goal": "발표 자료 작성과 공유 준비 마무리"
+    }
+  ],
+  "myworks_folders": [
+    { "lesson": 1, "label": "1차시 작품" },
+    { "lesson": 2, "label": "2차시 작품" },
+    { "lesson": 3, "label": "3차시 작품" },
+    { "lesson": 4, "label": "4차시 작품" }
+  ]
+}

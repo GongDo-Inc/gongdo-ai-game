@@ -25,6 +25,7 @@ PROJECT_ID="${PROJECT_ID:-$(gcloud config get-value project 2>/dev/null)}"
 # 형식: ENV_VAR=SECRET_NAME:VERSION
 SECRETS=(
   "ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest"
+  "OPENAI_API_KEY=OPENAI_API_KEY:latest"
   "KV_REST_API_URL=KV_REST_API_URL:latest"
   "KV_REST_API_TOKEN=KV_REST_API_TOKEN:latest"
   "SUPABASE_URL=SUPABASE_URL:latest"
@@ -54,6 +55,67 @@ fi
 
 # 스크립트 디렉토리(=앱_app)로 이동 (어디서 실행해도 안전)
 cd "$(dirname "${BASH_SOURCE[0]}")"
+
+# ── 테스트 가드 — fail 시 배포 중단 (외부 학생 노출 사고 방지) ──────────
+# SKIP_TESTS=1 ./deploy.sh 로 우회 가능 (긴급 hotfix 만)
+# RUN_E2E=1 ./deploy.sh 로 Playwright E2E 까지 포함 (느림 ~2분)
+if [[ "${SKIP_TESTS:-}" != "1" ]]; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "🧪 단위·API 테스트 실행 중..."
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  TEST_LOG=$(mktemp -t gongdo-test-XXXXXX.log)
+  # 테스트 출력을 화면 + 파일에 동시 기록 (tee). pipefail 로 실패 코드 보존.
+  set -o pipefail
+  if npm test 2>&1 | tee "$TEST_LOG"; then
+    set +o pipefail
+    PASS_LINE=$(grep -E '^# pass [0-9]+' "$TEST_LOG" | tail -1 || echo '# pass ?')
+    rm -f "$TEST_LOG"
+    echo ""
+    echo "✅ 모든 테스트 통과 ($PASS_LINE) — 배포 진행"
+    echo ""
+  else
+    set +o pipefail
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "❌ 테스트 실패 — 배포 중단"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    # 실패 케이스만 깔끔히 추출 (node:test TAP 형식의 'not ok' 라인)
+    FAIL_LINES=$(grep -E '^not ok ' "$TEST_LOG" || true)
+    SUMMARY_LINES=$(grep -E '^# (tests|pass|fail) ' "$TEST_LOG" || true)
+    if [[ -n "$FAIL_LINES" ]]; then
+      echo ""
+      echo "🔴 실패한 케이스:"
+      echo "$FAIL_LINES" | sed 's/^/   /'
+    fi
+    if [[ -n "$SUMMARY_LINES" ]]; then
+      echo ""
+      echo "📊 요약:"
+      echo "$SUMMARY_LINES" | sed 's/^/   /'
+    fi
+    echo ""
+    echo "📝 전체 로그: $TEST_LOG"
+    echo ""
+    echo "다음 중 하나로 진행하세요:"
+    echo "  1) 위 실패 케이스 수정 후 재배포"
+    echo "  2) 정말 긴급하면 (위험): SKIP_TESTS=1 ./deploy.sh"
+    exit 1
+  fi
+
+  # ── E2E 테스트 (옵션) — RUN_E2E=1 ./deploy.sh 로 활성 (Playwright, 느림 ~2분) ──
+  if [[ "${RUN_E2E:-}" == "1" ]]; then
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "🎭 E2E (Playwright) 테스트 실행 중... (~2분)"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    if ! npm run test:e2e; then
+      echo ""
+      echo "❌ E2E 테스트 실패 — 배포 중단"
+      echo "   상세: npx playwright show-report (또는 test-results/ 폴더 참고)"
+      exit 1
+    fi
+    echo "✅ E2E 통과"
+    echo ""
+  fi
+fi
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "🚀 Cloud Run 배포 시작"

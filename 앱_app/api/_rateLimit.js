@@ -41,8 +41,11 @@ if (
 
 function normalizeKey(scope, id, ip) {
   const bucket = Math.floor(Date.now() / 60_000); // 분 단위 버킷
-  // S-AUTH-01: IP를 보조 키로 결합. studentId 스푸핑해도 IP 같으면 동일 버킷
-  const ipPart = ip ? `:${String(ip).split(',')[0].trim().slice(0, 45)}` : '';
+  // S-AUTH-01: IP를 보조 키로 결합. studentId 스푸핑해도 IP 같으면 동일 버킷.
+  // IPv6 (::1, 2001:db8::1 등) 의 콜론이 키 구분자(:)와 충돌해 Upstash 가 path 거부 → dash 로 치환.
+  const rawIp = ip ? String(ip).split(',')[0].trim() : '';
+  const safeIp = rawIp.replace(/:/g, '-').slice(0, 45);
+  const ipPart = safeIp ? `:${safeIp}` : '';
   return `rl:${scope}:${id}${ipPart}:${bucket}`;
 }
 

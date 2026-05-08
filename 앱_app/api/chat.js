@@ -187,9 +187,9 @@ const H = () => canvas.height;
 - 외부 URL 접근, 폼 전송, 쿠키 사용 금지.
 
 【넷마블 캐릭터 이미지 참조 — 매우 중요】
-문서에 캐릭터가 언급되면 반드시 **학생 문서에 적힌 절대 URL** 을 그대로 사용합니다. 상대 경로(/에셋_assets/...) 를 임의로 만들어 쓰지 마세요 — iframe srcdoc 에서 작동하지 않습니다.
+문서에 캐릭터가 언급되면 반드시 **학생 문서에 적힌 절대 URL** 을 그대로 사용합니다. 상대 경로(/assets/...) 를 임의로 만들어 쓰지 마세요 — iframe srcdoc 에서 작동하지 않습니다.
 
-예시: 문서에 "- 주인공: ㅋㅋ (이미지: https://gongdo-ai-game.vercel.app/에셋_assets/캐릭터_characters/kk_idle.png)" 이라고 적혀있으면, 해당 URL 을 그대로 img 태그의 src 속성에 사용합니다 (예: img src="https://gongdo-ai-game.vercel.app/에셋_assets/캐릭터_characters/kk_idle.png").
+예시: 문서에 "- 주인공: ㅋㅋ (이미지: /assets/characters/kk_idle.png)" 이라고 적혀있으면, 해당 URL 을 그대로 img 태그의 src 속성에 사용합니다 (예: img src="/assets/characters/kk_idle.png").
 
 만약 문서에 이미지 URL 이 명시되지 않았다면 이모지 폴백만 사용:
 - 토리 → 👒 / ㅋㅋ → 🦸 / 밥 → 🐰 / 레옹 → 🦁
@@ -231,10 +231,10 @@ function drawPlayer(ctx, x, y, size) {
 
 | 학생 문서의 캐릭터 | playerImg.src (URL 그대로 복사) | 이모지 폴백 |
 |------------------|--------------------------------|-------------|
-| ㅋㅋ | https://gongdo-ai-game.vercel.app/에셋_assets/캐릭터_characters/kk_idle.png | 🦸 |
-| 토리 | https://gongdo-ai-game.vercel.app/에셋_assets/캐릭터_characters/tory_idle.png | 👒 |
-| 밥 | https://gongdo-ai-game.vercel.app/에셋_assets/캐릭터_characters/bob_idle.png | 🐰 |
-| 레옹 | https://gongdo-ai-game.vercel.app/에셋_assets/캐릭터_characters/leon_idle.png | 🦁 |
+| ㅋㅋ | /assets/characters/kk_idle.png | 🦸 |
+| 토리 | /assets/characters/tory_idle.png | 👒 |
+| 밥 | /assets/characters/bob_idle.png | 🐰 |
+| 레옹 | /assets/characters/leon_idle.png | 🦁 |
 
 ❌ 위반 사례 (절대 금지):
 - 학생이 "주인공: 밥" 이라 적었는데 코드에 \`kk_idle.png\` 가 들어가는 것 ← 가장 흔한 실수
@@ -251,7 +251,7 @@ function drawPlayer(ctx, x, y, size) {
 【케이스 B — DOM <img> 기반 게임】
 \`<img>\` 사용 시 onerror 속성에 인라인 폴백을 반드시 포함:
 \`\`\`html
-<img src="/에셋_assets/캐릭터_characters/kk_idle.png"
+<img src="/assets/characters/kk_idle.png"
      style="width:64px;height:64px"
      onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'🦸',style:'font-size:56px;display:inline-block;line-height:1'}))">
 \`\`\`
@@ -352,8 +352,16 @@ const SYSTEM_TUTOR = `당신은 대한민국 초등 5~6학년 학생에게 "바�
 학생: "배경에 별을 많이 넣고 싶어"
 → "'배경:' 줄 뒤에 '(별이 아주 많은 밤하늘)' 처럼 설명을 덧붙여보세요 🌌 [HINT:배경:]"
 
+학생: "보드 색상 바꾸고 싶어"
+→ "'## 보드 색상' 섹션의 '- 기본 보드' 줄을 '- 노을 하늘처럼' 처럼 원하는 분위기로 바꿔보세요! 🎨 [HINT:## 보드 색상]"
+
+학생: "보드 색깔을 핑크로"
+→ "'## 보드 색상' 섹션에 '- 핑크색' 같이 쓰면 보드판 배경이 바뀌어요 💖 [HINT:## 보드 색상]"
+
 학생: "안녕하세요"
-→ "안녕하세요! 오늘도 재밌는 게임 만들어볼까요? 🌟 [HINT:]"`;
+→ "안녕하세요! 오늘도 재밌는 게임 만들어볼까요? 🌟 [HINT:]"
+
+⚠️ 절대 [HINT:###] 처럼 마크다운 토큰만 단독 사용 금지. 학생 문서의 실제 단어/섹션명을 포함해야 함.`;
 
 const SYSTEM_DICE = `당신은 초등학생의 1차시 보드게임 문서에서 "주사위 모양"만 읽어 짧은 JSON으로 정리하는 도우미입니다.
 
@@ -735,7 +743,7 @@ export default async function handler(req, res) {
     if (mode === 'generator' && html) {
       const imgCount = (html.match(/<img\s/gi) || []).length;
       const fillTextCount = (html.match(/fillText\s*\(/gi) || []).length;
-      const hasCharacterUrl = /에셋_assets\/캐릭터_characters\/[a-z_]+\.png/i.test(html);
+      const hasCharacterUrl = /assets\/characters\/[a-z_]+\.png/i.test(html);
       debugMeta = { imgCount, fillTextCount, hasCharacterUrl };
     }
 

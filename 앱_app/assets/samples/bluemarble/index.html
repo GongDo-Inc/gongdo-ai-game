@@ -1,0 +1,1605 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>부루마블 — 공도 AI-Game</title>
+<style>
+  :root{
+    --color-red:#E63946; --color-red-dark:#C62E39;
+    --color-yellow:#F7C548; --color-green:#8FA957; --color-blue:#3D7BA3;
+    --color-brown:#5B3A22; --color-brown-soft:#8A6849;
+    --color-black:#1A1A1A; --color-cream:#FFF8EC; --color-cream-deep:#F5EDD6;
+    --color-pink:#F48FA0; --color-gray-100:#EFE8D6;
+    --font-body:'Nanum Gothic','Apple SD Gothic Neo','Malgun Gothic',sans-serif;
+    --font-display:'Jua',var(--font-body);
+    --outline-width:3px;
+    --shadow-toon-sm:2px 2px 0 var(--color-black);
+    --shadow-toon:4px 4px 0 var(--color-black);
+    --shadow-toon-hover:6px 6px 0 var(--color-black);
+    --ease:cubic-bezier(0.4,0,0.2,1);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;height:100%;overflow:hidden;
+    font-family:var(--font-body);color:var(--color-brown);background:var(--stage-color, #dcb9d4)}
+  button{font-family:inherit}
+
+  /* ── 전체 레이아웃 ─────────────────────────────────────── */
+  .stage{
+    position:fixed;inset:0;display:flex;flex-direction:column;
+  }
+  .hud{
+    flex:0 0 auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+    padding:8px 12px;background:rgba(255,248,236,.9);
+    border-bottom:2px solid var(--color-black);backdrop-filter:blur(4px);
+    z-index:5;
+  }
+  .hud-chip{
+    display:inline-flex;align-items:center;gap:4px;
+    border:2px solid var(--color-black);border-radius:10px;
+    background:var(--color-cream);padding:4px 10px;
+    font-weight:800;font-size:13px;box-shadow:1px 1px 0 var(--color-black);
+  }
+  .hud-chip.gold{background:var(--color-yellow)}
+  .hud-chip.turn{background:var(--color-red);color:var(--color-cream)}
+  .hud-chip.turn.is-ai{background:var(--color-blue)}
+  .hud-spacer{flex:1}
+  .hud-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+  .arena{
+    flex:1;position:relative;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+    padding:0;
+  }
+
+  /* ── 보드 스테이지 (worldmap.jpg를 화면 가득 채움) ───────── */
+  /* portrait 이미지를 landscape 컨테이너에 cover로 채워 board art가 크게 보이도록.
+     상하 일부 크롭되지만 보드 그림은 이미지 중앙이라 안전. 좌표는 .board 기준 % */
+  .board{
+    position:absolute; inset:0;
+    background-color:var(--board-color, #d8c6a4);
+    background-image:var(--board-bg, url('../../backgrounds/worldmap.jpg'));
+    background-size:cover;
+    background-position:center center;
+    background-repeat:no-repeat;
+    user-select:none;
+  }
+  .board.board-theme-worksheet{
+    inset:12px;
+    border:4px solid var(--color-black);
+    border-radius:20px;
+    background-color:var(--board-color, #d8c6a4);
+    background-image:var(--board-bg, none);
+    background-size:cover;
+    background-position:center center;
+    background-repeat:no-repeat;
+    box-shadow:0 6px 0 rgba(26,26,26,.22);
+    overflow:hidden;
+  }
+  .board.board-theme-worksheet::before{
+    content:'';
+    position:absolute;left:0;right:0;top:40px;height:3px;
+    background:var(--color-black);
+    opacity:.85;
+    z-index:3;
+  }
+  .board.board-theme-worksheet::after{
+    content:'';
+    position:absolute;inset:0;
+    border-radius:inherit;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.04) 14%),
+      radial-gradient(circle at 50% 50%, rgba(247,240,223,.28) 0%, rgba(239,226,184,.36) 100%);
+    pointer-events:none;
+    z-index:1;
+  }
+  /* AI 생성 배경 이미지가 있을 때는 크림색 오버레이를 숨겨 그림이 보이게 한다 */
+  .board.board-theme-worksheet.has-bg-image::after{
+    background: none;
+  }
+  /* 이미지 위 가독성 보강 — 중앙 타이틀과 카드 더미는 살짝 어둡게 가려서 이미지를 더 돋보이게 */
+  .board.board-theme-worksheet.has-bg-image .worksheet-center-title{
+    opacity:0;
+  }
+  .board.board-theme-worksheet.has-bg-image .worksheet-deck,
+  .board.board-theme-worksheet.has-bg-image .worksheet-turn-note{
+    opacity:0;
+  }
+  .worksheet-topbar{
+    position:absolute;left:0;right:0;top:0;height:40px;
+    display:flex;align-items:center;gap:10px;
+    padding:0 14px;
+    background:rgba(245,237,214,.9);
+    z-index:3;
+  }
+  .worksheet-logo{
+    font-family:'Gaegu','Nanum Gothic',sans-serif;
+    font-size:18px;
+    font-weight:700;
+    color:var(--color-black);
+    line-height:1;
+  }
+  .worksheet-topbar-spacer{flex:1}
+  .worksheet-hud{
+    display:flex;gap:8px;align-items:center;
+  }
+  .worksheet-chip{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:4px 8px;
+    border:2px solid var(--color-black);
+    border-radius:6px;
+    background:#fffaf0;
+    font-family:'Gaegu','Nanum Gothic',sans-serif;
+    font-size:13px;
+    font-weight:700;
+    color:var(--color-black);
+    box-shadow:2px 2px 0 rgba(26,26,26,.18);
+    line-height:1;
+  }
+  .worksheet-chip.gold{background:var(--color-yellow)}
+  .worksheet-chip.turn{background:var(--color-red);color:var(--color-cream)}
+  .worksheet-center-title{
+    position:absolute;
+    left:50%;
+    top:45%;
+    transform:translate(-50%,-50%) rotate(-2deg);
+    font-family:'Nanum Pen Script','Gaegu',cursive;
+    font-size:34px;
+    line-height:1.2;
+    text-align:center;
+    color:var(--color-black);
+    pointer-events:none;
+  }
+  .worksheet-deck{
+    position:absolute;
+    left:50%;
+    top:56%;
+    transform:translateX(-50%);
+    display:flex;
+    gap:10px;
+    pointer-events:none;
+  }
+  .worksheet-deck-card{
+    width:60px;height:80px;
+    border:3px solid var(--color-black);
+    border-radius:8px;
+    background:#fffaf0;
+    display:flex;align-items:center;justify-content:center;
+    text-align:center;
+    padding:4px;
+    box-shadow:3px 3px 0 rgba(26,26,26,.22);
+    font-family:'Gaegu','Nanum Gothic',sans-serif;
+    font-size:13px;
+    font-weight:700;
+    line-height:1.15;
+    color:var(--color-black);
+  }
+  .worksheet-deck-card.gold{background:var(--color-yellow)}
+  .worksheet-deck-card.red{background:var(--color-red);color:var(--color-cream)}
+  .worksheet-turn-note{
+    position:absolute;
+    left:50%;
+    /* 카드 세 개 위쪽에 배치 (cards top:56% 위) */
+    top:48%;
+    transform:translate(-50%, -100%);
+    font-family:'Gaegu','Nanum Gothic',sans-serif;
+    font-size:14px;
+    font-weight:700;
+    color:var(--color-brown);
+    background:rgba(255, 248, 236, 0.92);
+    padding:3px 10px;
+    border-radius:999px;
+    border:2px solid rgba(26,26,26,.18);
+    pointer-events:none;
+  }
+  .worksheet-ai-badge{
+    position:absolute;left:34px;bottom:18px;
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:12px;font-weight:800;color:var(--color-black);
+    pointer-events:none;
+  }
+  .worksheet-ai-face{
+    width:28px;height:28px;border-radius:50%;
+    border:2px solid var(--color-black);
+    background:linear-gradient(180deg,#ffd66b,#f7c548);
+    box-shadow:2px 2px 0 rgba(26,26,26,.22);
+  }
+  /* 셀 핫스팟 (배경 이미지 위) — 40칸이라 작게 */
+  .cell{
+    position:absolute;width:4%;aspect-ratio:1;
+    transform:translate(-50%,-50%);
+    border:2px dashed transparent;border-radius:6px;
+    cursor:pointer;
+    transition:transform .15s var(--ease),background .15s,border-color .15s;
+    z-index:2;
+  }
+  .cell:hover{
+    background:rgba(255,248,236,.25);
+    border-color:rgba(26,26,26,.45);
+  }
+  .cell.show-coordinates{
+    width:4.8%;
+    border-color:rgba(26,26,26,.35);
+    background:rgba(255,248,236,.85);
+    box-shadow:1px 1px 0 rgba(26,26,26,.35);
+  }
+  .board.board-theme-worksheet .cell{
+    width:6.9%;
+    border:3px solid var(--color-black);
+    border-radius:0;
+    background:#fffaf0;
+    box-shadow:none;
+    z-index:2;
+  }
+  .board.board-theme-worksheet .cell:hover{
+    background:#fff4d8;
+    border-color:var(--color-black);
+  }
+  .board.board-theme-worksheet .cell.show-coordinates{
+    background:#fffaf0;
+    border-color:var(--color-black);
+    box-shadow:none;
+  }
+  .board.board-theme-worksheet .cell.type-start,
+  .board.board-theme-worksheet .cell.type-space{
+    background:var(--color-red);
+    color:var(--color-cream);
+  }
+  .board.board-theme-worksheet .cell.type-city{
+    background:#fffaf0;
+  }
+  .board.board-theme-worksheet .cell.type-event,
+  .board.board-theme-worksheet .cell.type-bonus{
+    background:#ffcf57;
+  }
+  .board.board-theme-worksheet .cell.type-tax,
+  .board.board-theme-worksheet .cell.type-travel{
+    background:#b8d1e5;
+  }
+  .board.board-theme-worksheet .cell.type-jail{
+    background:#ec8498;
+  }
+  .board.board-theme-worksheet .cell-index{
+    left:8px;top:8px;transform:none;
+    min-width:16px;height:16px;padding:0 3px;
+    background:#fff;
+    font-size:9px;
+  }
+  .cell-index{
+    position:absolute;left:50%;top:50%;
+    transform:translate(-50%,-50%);
+    min-width:18px;height:18px;padding:0 4px;
+    display:flex;align-items:center;justify-content:center;
+    border-radius:999px;
+    background:var(--color-yellow);
+    border:2px solid var(--color-black);
+    color:var(--color-black);
+    font-size:10px;font-weight:800;line-height:1;
+  }
+  .cell.is-current::after{
+    content:'';position:absolute;inset:-4px;border-radius:50%;
+    border:3px solid var(--color-blue);
+    animation:cell-pulse 1.4s var(--ease) infinite;
+    pointer-events:none;
+  }
+  @keyframes cell-pulse{
+    0%,100%{transform:scale(1);opacity:.9}
+    50%{transform:scale(1.1);opacity:.4}
+  }
+
+  /* 토큰 (캐릭터 말) — 캐릭터 핀 이미지 사용 */
+  .token{
+    position:absolute;width:60px;height:60px;
+    background-size:contain;background-position:center bottom;background-repeat:no-repeat;
+    /* 카툰 그림자 (이미지 발 밑) */
+    filter:drop-shadow(2px 2px 0 var(--color-black));
+    transform:translate(-50%,-50%);
+    /* 각 칸 사이 짧은 글라이드(220ms) → 다음 스텝 시작 전 잠깐 정지하여 N칸 이동이 시각적으로 카운트되게 */
+    transition:left .22s var(--ease),top .22s var(--ease);
+    z-index:4;pointer-events:none;
+  }
+  .token.dennis{background-image:url('../../characters/archive/dennis.png')}
+  .token.seulgi{background-image:url('../../characters/archive/seulgi.png')}
+  /* AI 토큰: 이미지 대신 파란 원 위에 로봇 이모지 */
+  /* z-index를 사용자 토큰(z:4)보다 낮춰서(z:3) 시각적으로 뒤에 깔림 */
+  /* 사용자 토큰(54px)보다 작게(40px) 두어 시각적 위압감 줄임 */
+  .token.ai{
+    width:40px;height:40px;
+    background:var(--color-blue);
+    border:2px solid var(--color-black);
+    border-radius:50%;
+    color:var(--color-cream);
+    font-size:20px;line-height:1;font-weight:800;
+    display:flex;align-items:center;justify-content:center;
+    filter:drop-shadow(1px 1px 0 var(--color-black));
+    background-image:none;
+    z-index:3;
+  }
+  .token.pin-token{
+    width:30px;height:30px;
+    border-radius:50% 50% 50% 0;
+    border:2px solid var(--color-black);
+    transform:translate(-50%,-50%) rotate(-45deg);
+    background:var(--pin-color, var(--color-red));
+    display:flex;align-items:center;justify-content:center;
+    color:var(--color-cream);
+    font-size:14px;font-weight:800;
+    filter:drop-shadow(2px 2px 0 var(--color-black));
+  }
+  .token.pin-token .pin-inner{
+    transform:rotate(45deg);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .token.pin-token .token-name{
+    top:calc(100% + 14px);
+  }
+  .board.board-theme-worksheet .token.pin-token{
+    width:28px;height:28px;
+    border-width:2px;
+  }
+  .board.board-theme-worksheet .token-name{
+    background:#fff9ee;
+    color:var(--color-black);
+    border:2px solid var(--color-black);
+    box-shadow:1px 1px 0 rgba(26,26,26,.22);
+    font-size:9px;
+    font-family:'Gaegu','Nanum Gothic',sans-serif;
+  }
+  .roll-btn .roll-emoji{
+    font-size:22px;line-height:1;
+    display:inline-flex;align-items:center;justify-content:center;
+  }
+  .roll-btn.theme-star{
+    background:#F7C548;
+    color:var(--color-black);
+  }
+  .roll-btn.theme-heart{
+    background:#F48FA0;
+  }
+  .roll-btn.theme-lightning{
+    background:#F28C28;
+  }
+  .token.is-hopping{animation:token-hop .28s var(--ease)}
+  @keyframes token-hop{
+    0%{margin-top:0}
+    50%{margin-top:-4px}
+    100%{margin-top:0}
+  }
+  .token-name{
+    position:absolute;top:calc(100% + 2px);left:50%;transform:translateX(-50%);
+    background:var(--color-black);color:var(--color-cream);
+    padding:1px 6px;border-radius:4px;font-size:10px;line-height:1.3;white-space:nowrap;
+  }
+  /* ── 주사위 버튼 ──────────────────────────────────────── */
+  .roll-btn{
+    position:absolute;left:50%;bottom:42px;transform:translateX(-50%);
+    background:var(--color-red);color:var(--color-cream);
+    border:var(--outline-width) solid var(--color-black);border-radius:14px;
+    padding:12px 26px;font-family:var(--font-display);font-size:18px;font-weight:800;
+    box-shadow:var(--shadow-toon);cursor:pointer;
+    display:inline-flex;align-items:center;gap:8px;z-index:5;
+    transition:transform .15s,box-shadow .15s;
+  }
+  .roll-btn:hover{transform:translateX(-50%) translate(-2px,-2px);box-shadow:var(--shadow-toon-hover);background:var(--color-red-dark)}
+  .roll-btn:disabled{background:var(--color-gray-100);color:var(--color-brown-soft);
+    border-color:var(--color-brown-soft);box-shadow:1px 1px 0 var(--color-brown-soft);cursor:not-allowed}
+  .roll-btn:disabled:hover{transform:translateX(-50%);box-shadow:1px 1px 0 var(--color-brown-soft)}
+  .roll-btn .ico{display:inline-block;animation:wiggle 2.4s var(--ease) infinite;font-size:22px;line-height:1}
+  @keyframes wiggle{
+    0%,100%{transform:rotate(0)}
+    20%{transform:rotate(-15deg)}
+    40%{transform:rotate(12deg)}
+    60%{transform:rotate(-6deg)}
+  }
+
+  /* ── 모달 ─────────────────────────────────────────────── */
+  .overlay{
+    position:absolute;inset:0;background:rgba(26,26,26,.5);
+    display:flex;align-items:center;justify-content:center;padding:16px;z-index:50;
+    animation:fadeIn .25s var(--ease);
+  }
+  @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+  .modal{
+    background:var(--color-cream);border:var(--outline-width) solid var(--color-black);
+    border-radius:16px;box-shadow:var(--shadow-toon-hover);
+    padding:20px 24px;max-width:380px;width:100%;
+    display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;
+    animation:popIn .25s var(--ease);
+  }
+  @keyframes popIn{from{transform:scale(.85);opacity:0}to{transform:scale(1);opacity:1}}
+  .modal h2{font-family:var(--font-display);font-size:24px;margin:0;color:var(--color-brown)}
+  .modal p{margin:0;font-size:14px;line-height:1.5}
+  .modal .btn{
+    background:var(--color-red);color:var(--color-cream);
+    border:var(--outline-width) solid var(--color-black);border-radius:10px;
+    padding:10px 22px;font-family:var(--font-display);font-size:16px;font-weight:800;
+    box-shadow:var(--shadow-toon-sm);cursor:pointer;
+    transition:transform .15s,box-shadow .15s;
+  }
+  .btn:hover{transform:translate(-2px,-2px);box-shadow:var(--shadow-toon)}
+  .btn.ghost{background:var(--color-cream);color:var(--color-brown)}
+
+  .dice-pair{display:flex;gap:14px;perspective:300px;margin:6px 0}
+  .die{
+    width:72px;height:72px;
+    position:relative;
+    display:flex;align-items:center;justify-content:center;
+    border:3px solid var(--color-black);
+    border-radius:20px;
+    background:var(--color-cream);
+    box-shadow:var(--shadow-toon-sm);
+    font-family:var(--font-display);
+  }
+  .die-face{
+    position:relative;z-index:2;
+    font-size:28px;font-weight:800;line-height:1;
+    color:var(--color-black);
+  }
+  .die-shape{
+    position:absolute;inset:8px;
+    display:flex;align-items:center;justify-content:center;
+    font-size:42px;line-height:1;
+    opacity:.28;
+  }
+  /* AI 생성 주사위 이미지 — emoji 자리에 들어감 */
+  .die-shape-img{
+    position:absolute;inset:3px;
+    width:calc(100% - 6px);height:calc(100% - 6px);
+    object-fit:cover;
+    border-radius:14px;
+    opacity:1;
+    pointer-events:none;
+  }
+  /* 이미지 위 숫자가 잘 보이도록 흰 원형 배지로 감싸기 (완전 불투명).
+     .has-image 는 die 렌더 시 imageUrl 있으면 자동 추가되는 클래스. */
+  .die.has-image .die-face{
+    min-width:36px;
+    height:36px;
+    padding:0 10px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    background:#ffffff65 !important;
+    border-radius:999px;
+    box-shadow:1px 1px 0 var(--color-black);
+    z-index:3;
+  }
+  .die-head-img{
+    width:48px;height:48px;
+    vertical-align:middle;
+    object-fit:cover;
+    border:2px solid var(--color-black);
+    border-radius:10px;
+    box-shadow:2px 2px 0 var(--color-black);
+    margin-right:8px;
+  }
+  .die-btn-img{
+    width:36px;height:36px;
+    vertical-align:middle;
+    object-fit:cover;
+    border:2px solid var(--color-black);
+    border-radius:8px;
+    box-shadow:1px 1px 0 var(--color-black);
+  }
+  .die.theme-classic{
+    background:var(--color-cream);
+  }
+  .die.theme-star{
+    background:#FFF1B8;
+    clip-path:polygon(50% 2%,61% 35%,98% 35%,68% 57%,79% 94%,50% 72%,21% 94%,32% 57%,2% 35%,39% 35%);
+  }
+  .die.theme-heart{
+    background:#FFD6E5;
+    clip-path:path('M 36 66 C 10 50 0 31 0 18 C 0 7 9 0 18 0 C 26 0 32 5 36 12 C 40 5 46 0 54 0 C 63 0 72 7 72 18 C 72 31 62 50 36 66 Z');
+  }
+  .die.theme-lightning{
+    background:#FFE1A8;
+    clip-path:polygon(46% 0,77% 0,57% 34%,83% 34%,30% 100%,42% 54%,18% 54%);
+  }
+  .die.is-rolling{animation:die-roll .9s var(--ease)}
+  .die.theme-star{filter:drop-shadow(0 0 10px rgba(247,197,72,.75))}
+  .die.theme-heart{filter:drop-shadow(0 0 10px rgba(244,143,160,.75))}
+  .die.theme-lightning{filter:drop-shadow(0 0 10px rgba(242,140,40,.75))}
+  @keyframes die-roll{
+    0%{transform:rotateX(0) rotateY(0)}
+    100%{transform:rotateX(1440deg) rotateY(1080deg)}
+  }
+  .dice-result{
+    font-family:var(--font-display);font-size:18px;color:var(--color-brown);
+    background:var(--color-yellow);border:2px solid var(--color-black);
+    border-radius:99px;padding:4px 14px;min-height:30px;
+    display:flex;align-items:center;justify-content:center;gap:4px;
+  }
+  .dice-result strong{color:var(--color-red);font-size:22px}
+  .dice-result.is-double{background:var(--color-red);color:var(--color-cream)}
+
+  /* 셀 정보 카드 (작은 모달) */
+  .cell-info-emoji{font-size:42px;line-height:1}
+  .cell-info-type{font-size:11px;letter-spacing:.08em;font-weight:800;color:var(--color-brown-soft)}
+  .cell-info-effect{
+    background:var(--color-cream-deep);border:2px dashed var(--color-brown-soft);
+    border-radius:10px;padding:8px 12px;font-size:13px;width:100%;
+  }
+
+  /* ── 토스트 ──────────────────────────────────────────── */
+  .toast{
+    position:absolute;top:60px;left:50%;transform:translateX(-50%) translateY(-20px);
+    background:var(--color-brown);color:var(--color-cream);
+    padding:8px 16px;border-radius:10px;border:2px solid var(--color-black);
+    box-shadow:var(--shadow-toon-sm);font-weight:700;font-size:13px;
+    opacity:0;pointer-events:none;transition:all .25s var(--ease);z-index:30;
+    white-space:nowrap;
+  }
+  .toast.is-shown{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* ── 좁은 화면 대응 ─────────────────────────────────── */
+  @media (max-width:520px){
+    .hud{font-size:11px;padding:6px 8px}
+    .hud-chip{padding:3px 6px;font-size:11px}
+    .roll-btn{padding:10px 18px;font-size:15px;bottom:12px}
+    .token{width:30px;height:30px;font-size:14px}
+  }
+
+
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <!-- 상단 HUD -->
+  <div class="hud" id="hud"></div>
+
+  <!-- 게임 영역 -->
+  <div class="arena" id="arena">
+    <div class="board" id="board">
+      <!-- cells & tokens injected here -->
+    </div>
+    <button class="roll-btn" id="roll-btn">
+      <span class="roll-emoji" id="roll-emoji">🎲</span>
+      <span id="roll-label">주사위 굴리기</span>
+    </button>
+    <div class="toast" id="toast"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  const DEFAULT_CELLS_40 = [
+    // 0  N corner — 출발
+    { x:50.0, y:29.5, type:'start',  label:'출발',           ico:'🚩', desc:'한 바퀴 돌면 월급 +2,000골드!' },
+    // 1-9  N → E (perp 방향: +0.3x, -0.4y)
+    { x:52.9, y:31.6, type:'city',   label:'서울',           ico:'🏯', desc:'아름다운 한국의 수도.' },
+    { x:55.5, y:33.6, type:'event',  label:'황금카드',       ico:'🎴', desc:'카드를 뽑으면 골드가 늘거나 줄어요.' },
+    { x:58.1, y:35.6, type:'city',   label:'부산',           ico:'🌊', desc:'바다와 광안대교의 도시.' },
+    { x:60.7, y:37.6, type:'city',   label:'도쿄',           ico:'🗾', desc:'네온의 도시.' },
+    { x:63.3, y:39.6, type:'tax',    label:'세금',           ico:'💰', desc:'세금 -1,000골드.' },
+    { x:65.9, y:41.6, type:'city',   label:'베이징',         ico:'🐼', desc:'만리장성의 고향.' },
+    { x:68.5, y:43.6, type:'city',   label:'상하이',         ico:'🏙️', desc:'동방명주의 야경.' },
+    { x:71.1, y:45.6, type:'event',  label:'황금카드',       ico:'🎴', desc:'카드를 뽑으면 골드가 늘거나 줄어요.' },
+    { x:73.7, y:47.6, type:'city',   label:'방콕',           ico:'🐘', desc:'아시아 코끼리의 도시.' },
+    // 10  E corner — 무인도
+    { x:76.5, y:50.0, type:'jail',   label:'무인도',         ico:'🏝️', desc:'무인도! 3턴 동안 주사위를 못 굴려요.' },
+    // 11-19  E → S (perp 방향: +0.3x, +0.4y)
+    { x:73.7, y:52.4, type:'city',   label:'싱가포르',       ico:'🦁', desc:'머라이언의 분수.' },
+    { x:71.1, y:54.4, type:'city',   label:'시드니',         ico:'🦘', desc:'캥거루의 나라.' },
+    { x:68.5, y:56.4, type:'event',  label:'황금카드',       ico:'🎴', desc:'카드를 뽑으면 골드가 늘거나 줄어요.' },
+    { x:65.9, y:58.4, type:'city',   label:'멜버른',         ico:'🐨', desc:'코알라가 사는 도시.' },
+    { x:63.3, y:60.4, type:'tax',    label:'세금',           ico:'💰', desc:'세금 -1,000골드.' },
+    { x:60.7, y:62.4, type:'city',   label:'두바이',         ico:'🕌', desc:'사막 위의 마천루.' },
+    { x:58.1, y:64.4, type:'travel', label:'여행',           ico:'✈️', desc:'다음 여행 칸으로 점프!' },
+    { x:55.5, y:66.4, type:'city',   label:'케이프타운',     ico:'🦓', desc:'테이블마운틴의 도시.' },
+    { x:52.9, y:68.4, type:'city',   label:'카이로',         ico:'🐫', desc:'피라미드의 모래바람.' },
+    // 20  S corner — 우주여행
+    { x:50.0, y:70.5, type:'space',  label:'우주여행',       ico:'🚀', desc:'아무 칸으로 텔레포트!' },
+    // 21-29  S → W (perp 방향: -0.3x, +0.4y)
+    { x:47.1, y:68.4, type:'city',   label:'리우',           ico:'🏖️', desc:'카니발의 도시.' },
+    { x:44.5, y:66.4, type:'event',  label:'황금카드',       ico:'🎴', desc:'카드를 뽑으면 골드가 늘거나 줄어요.' },
+    { x:41.9, y:64.4, type:'city',   label:'부에노스아이레스', ico:'🐂', desc:'탱고의 도시.' },
+    { x:39.3, y:62.4, type:'city',   label:'멕시코시티',     ico:'🌶️', desc:'아즈텍 문명의 후예.' },
+    { x:36.7, y:60.4, type:'tax',    label:'세금',           ico:'💰', desc:'세금 -1,000골드.' },
+    { x:34.1, y:58.4, type:'city',   label:'뉴욕',           ico:'🗽', desc:'자유의 여신상.' },
+    { x:31.5, y:56.4, type:'city',   label:'LA',             ico:'🌴', desc:'할리우드의 별빛.' },
+    { x:28.9, y:54.4, type:'event',  label:'황금카드',       ico:'🎴', desc:'카드를 뽑으면 골드가 늘거나 줄어요.' },
+    { x:26.3, y:52.4, type:'city',   label:'토론토',         ico:'🍁', desc:'단풍과 CN타워.' },
+    // 30  W corner — 사회복지
+    { x:23.5, y:50.0, type:'bonus',  label:'사회복지',       ico:'🎁', desc:'고마워요! +2,000골드.' },
+    // 31-39  W → N (perp 방향: -0.3x, -0.4y)
+    { x:26.3, y:47.6, type:'city',   label:'호놀룰루',       ico:'🌺', desc:'하와이의 보석.' },
+    { x:28.9, y:45.6, type:'travel', label:'여행',           ico:'✈️', desc:'다음 여행 칸으로 점프!' },
+    { x:31.5, y:43.6, type:'city',   label:'모스크바',       ico:'🐻', desc:'붉은 광장의 도시.' },
+    { x:34.1, y:41.6, type:'event',  label:'황금카드',       ico:'🎴', desc:'카드를 뽑으면 골드가 늘거나 줄어요.' },
+    { x:36.7, y:39.6, type:'city',   label:'이스탄불',       ico:'🕌', desc:'동서양의 가교.' },
+    { x:39.3, y:37.6, type:'tax',    label:'세금',           ico:'💰', desc:'세금 -1,000골드.' },
+    { x:41.9, y:35.6, type:'city',   label:'베를린',         ico:'🍺', desc:'역사의 도시.' },
+    { x:44.5, y:33.6, type:'city',   label:'파리',           ico:'🗼', desc:'에펠탑의 빛나는 밤.' },
+    { x:47.1, y:31.6, type:'city',   label:'런던',           ico:'🎡', desc:'안개와 빅벤의 도시.' },
+  ];
+
+  const DEFAULT_CITY_NAMES = [
+    ['서울', '경복궁이 있는 도시.', '🏯'],
+    ['도쿄', '도쿄타워가 있는 도시.', '🗼'],
+    ['파리', '에펠탑의 도시.', '🗼'],
+    ['카이로', '피라미드의 도시.', '🐫'],
+    ['뉴욕', '자유의여신상의 도시.', '🗽'],
+    ['런던', '빅벤의 도시.', '🎡'],
+    ['베이징', '만리장성의 도시.', '🐼'],
+    ['시드니', '오페라하우스의 도시.', '🦘'],
+  ];
+
+  function createLoopCells(count) {
+    if (count === 40) return DEFAULT_CELLS_40.map((cell) => ({ ...cell }));
+    const safeCount = Math.max(4, Math.min(40, Number(count) || 12));
+    const citySlots = new Set([1, 2, 4, 7, 9, safeCount - 1]);
+    const specialByIndex = new Map([
+      [0, { type:'start', label:'출발', ico:'🚩', desc:'한 바퀴 돌면 월급 +2,000골드!' }],
+      [Math.min(3, safeCount - 1), { type:'event', label:'황금카드', ico:'🎴', desc:'카드를 뽑으면 골드가 늘거나 줄어요.' }],
+      [Math.min(5, safeCount - 1), { type:'jail', label:'무인도', ico:'🏝️', desc:'무인도! 3턴 동안 주사위를 못 굴려요.' }],
+      [Math.min(6, safeCount - 1), { type:'bonus', label:'사회복지', ico:'🎁', desc:'고마워요! +2,000골드.' }],
+      [Math.min(8, safeCount - 1), { type:'travel', label:'여행', ico:'✈️', desc:'다른 도시 칸으로 이동해요!' }],
+      [Math.min(10, safeCount - 1), { type:'tax', label:'세금', ico:'💰', desc:'세금 -1,000골드.' }],
+    ]);
+    let cityIndex = 0;
+    return Array.from({ length: safeCount }, (_, index) => {
+      const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / safeCount);
+      const x = 50 + 25 * Math.cos(angle);
+      const y = 50 + 19 * Math.sin(angle);
+      const special = specialByIndex.get(index);
+      if (special && !citySlots.has(index)) return { x, y, ...special };
+      const [label, desc, ico] = DEFAULT_CITY_NAMES[cityIndex % DEFAULT_CITY_NAMES.length];
+      cityIndex += 1;
+      return { x, y, type:'city', label, ico, desc };
+    });
+  }
+
+  function buildDefaultCityData(cells) {
+    return cells
+      .map((cell, idx) => ({ cell, idx }))
+      .filter(({ cell }) => cell.type === 'city')
+      .map(({ cell, idx }, order) => ({
+        index: idx,
+        label: cell.label,
+        landmark: cell.desc,
+        toll: 5000 + order * 1000,
+        ico: cell.ico,
+      }));
+  }
+
+  function createWorksheetCells(count) {
+    const safeCount = Math.max(4, Math.min(40, Number(count) || 12));
+    const left = 18.8;
+    const right = 81.2;
+    const top = 22.4;
+    const bottom = 81.6;
+    const width = right - left;
+    const height = bottom - top;
+    const perimeter = (width * 2) + (height * 2);
+    const step = perimeter / safeCount;
+    const baseCells = [
+      { type:'start',  label:'출발',     ico:'🚩', desc:'한 바퀴 돌면 월급 +2,000골드!' },
+      { type:'city',   label:'서울',     ico:'🏯', desc:'아름다운 한국의 수도.' },
+      { type:'event',  label:'황금카드', ico:'🎴', desc:'카드를 뽑으면 골드가 늘거나 줄어요.' },
+      { type:'city',   label:'부산',     ico:'🌊', desc:'바다와 광안대교의 도시.' },
+      { type:'tax',    label:'세금',     ico:'💰', desc:'세금 -1,000골드.' },
+      { type:'travel', label:'여행',     ico:'✈️', desc:'다른 도시 칸으로 이동해요!' },
+      { type:'city',   label:'런던',     ico:'🎡', desc:'안개와 빅벤의 도시.' },
+      { type:'city',   label:'도쿄',     ico:'🗼', desc:'도쿄타워가 있는 도시.' },
+      { type:'event',  label:'황금카드', ico:'🎴', desc:'카드를 뽑으면 골드가 늘거나 줄어요.' },
+      { type:'city',   label:'뉴욕',     ico:'🗽', desc:'자유의여신상의 도시.' },
+      { type:'bonus',  label:'보너스',   ico:'🎁', desc:'고마워요! +2,000골드.' },
+      { type:'space',  label:'우주여행', ico:'🚀', desc:'아무 칸으로 텔레포트!' },
+    ];
+
+    return Array.from({ length: safeCount }, (_, index) => {
+      const meta = baseCells[index] || {
+        type: 'city',
+        label: `${index}번 칸`,
+        ico: '📍',
+        desc: `${index}번 칸이에요.`,
+      };
+      const distance = step * index;
+      let x = left;
+      let y = top;
+      if (distance <= width) {
+        x = left + distance;
+        y = top;
+      } else if (distance <= width + height) {
+        x = right;
+        y = top + (distance - width);
+      } else if (distance <= (width * 2) + height) {
+        x = right - (distance - width - height);
+        y = bottom;
+      } else {
+        x = left;
+        y = bottom - (distance - (width * 2) - height);
+      }
+      return { x, y, ...meta };
+    });
+  }
+
+  function detectLessonCellType(label, desc) {
+    const text = `${label || ''} ${desc || ''}`;
+    if (/출발|salary/i.test(text)) return 'start';
+    if (/황금카드|카드/i.test(text)) return 'event';
+    if (/세금/i.test(text)) return 'tax';
+    if (/여행/i.test(text)) return 'travel';
+    if (/무인도/i.test(text)) return 'jail';
+    if (/보너스|사회복지/i.test(text)) return 'bonus';
+    if (/우주여행/i.test(text)) return 'space';
+    if (/도시|서울|도쿄|파리|런던|뉴욕|카이로|부산|광장|초원|숲|바다/i.test(text)) return 'city';
+    return 'plain';
+  }
+
+  const DEFAULT_PLAYERS = [
+    { id:'dennis', name:'데니스', imageUrl:'/assets/characters/archive/dennis.png', emoji:'👦', isHuman:true },
+    { id:'seulgi', name:'슬기', imageUrl:'/assets/characters/archive/seulgi.png', emoji:'👧', isHuman:false },
+  ];
+
+  const params = new URLSearchParams(location.search);
+  let injectedConfig = {};
+  try {
+    injectedConfig = window.__GONGDO_MARBLE_CONFIG__ || {};
+  } catch (_) {
+    injectedConfig = {};
+  }
+
+  const CONFIG = normalizeConfig(injectedConfig, params);
+  // backgroundImageUrl 이 비어 있으면 (1차시 워크시트 + 이미지 생성 실패) 'none' 으로 둬서
+  // url('') 같은 잘못된 CSS 가 들어가지 않도록 함
+  document.documentElement.style.setProperty(
+    '--board-bg',
+    CONFIG.board.backgroundImageUrl ? `url('${CONFIG.board.backgroundImageUrl}')` : 'none'
+  );
+  document.documentElement.style.setProperty('--stage-color', CONFIG.board.stageColor || '#EFE8D6');
+  document.documentElement.style.setProperty('--board-color', CONFIG.board.backgroundColor || '#D8C6A4');
+  const BASE_CELLS = CONFIG.ui.lessonTheme === 'worksheet'
+    ? createWorksheetCells(CONFIG.board.cellCount)
+    : createLoopCells(CONFIG.board.cellCount);
+  const CELLS = buildCells(BASE_CELLS, CONFIG);
+
+  // 차시별 보드 회전 — 3차시는 출발 칸(idx 0)을 6시 방향으로 (boardRotation: 180)
+  if (CONFIG.ui.boardRotation === 180) {
+    CELLS.forEach((cell) => {
+      cell.x = 100 - cell.x;
+      cell.y = 100 - cell.y;
+    });
+  }
+
+  const state = {
+    players: CONFIG.players.map((player, index) => ({
+      ...player,
+      pos: 0,
+      gold: CONFIG.rules.startGold,
+      jailTurns: 0,
+      laps: 0,
+      index,
+    })),
+    turnIndex: 0,
+    busy: false,
+    aiAuto: true,
+    winner: null,
+    finishReason: null,
+  };
+
+  const diceImg = (n) => `../../tools/dice/dice-${n}.png`;
+  for (let n = 1; n <= 6; n++) { const im = new Image(); im.src = diceImg(n); }
+
+  const $ = (sel) => document.querySelector(sel);
+  const hud = $('#hud');
+  const board = $('#board');
+  const rollBtn = $('#roll-btn');
+  const rollEmoji = $('#roll-emoji');
+  const rollLabel = $('#roll-label');
+  const toastEl = $('#toast');
+
+  // 모든 테마(worksheet·default) 공통 — 보드판에 배경 이미지를 인라인 스타일로 직접 박는다.
+  // CSS var 경로가 어떤 이유로 막히는 경우(매우 긴 data URL 등)에도 안전하게 적용됨.
+  if (CONFIG.board.backgroundImageUrl) {
+    board.style.backgroundImage = `url("${CONFIG.board.backgroundImageUrl}")`;
+    board.style.backgroundSize = 'cover';
+    board.style.backgroundPosition = 'center center';
+    board.style.backgroundRepeat = 'no-repeat';
+  }
+
+  function numberOr(value, fallback) {
+    return Number.isFinite(Number(value)) ? Number(value) : fallback;
+  }
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function formatSigned(num) {
+    const value = Number(num) || 0;
+    return `${value >= 0 ? '+' : ''}${value.toLocaleString()}`;
+  }
+
+  function normalizeConfig(rawConfig, query) {
+    const config = rawConfig && typeof rawConfig === 'object' ? rawConfig : {};
+    const queryName = query.get('name');
+    const queryWinGold = parseInt(query.get('winGold'), 10);
+    const queryDice = parseInt(query.get('dice'), 10);
+    const queryBgm = query.get('bgm');
+    const players = (Array.isArray(config.players) && config.players.length ? config.players : DEFAULT_PLAYERS)
+      .slice(0, 2)
+      .map((player, index) => {
+        const fallback = DEFAULT_PLAYERS[index] || DEFAULT_PLAYERS[0];
+        return {
+          id: String(player.id || fallback.id || `p${index}`),
+          name: String(player.name || fallback.name || `플레이어 ${index + 1}`).slice(0, 14),
+          imageUrl: player.imageUrl || fallback.imageUrl || '',
+          emoji: player.emoji || fallback.emoji || '🎮',
+          pinColor: player.pinColor || '',
+          ability: player.ability || null,
+          abilityText: player.abilityText || '',
+          isHuman: index === 0,
+        };
+      });
+    if (queryName && players[0]) players[0].name = queryName.slice(0, 14);
+    return {
+      title: config.title || '부루마블',
+      board: {
+        // 1·2차시 워크시트 모드에선 default world map fallback 적용 안 함
+        // → 이미지 생성 실패 시 깨끗한 보드 색상이 보이도록 ('none' 으로 처리)
+        // (3차시 이상의 default 테마만 worldmap fallback 사용)
+        backgroundImageUrl: config.board?.backgroundImageUrl
+          || (config.ui?.lessonTheme === 'worksheet' ? '' : '../../backgrounds/worldmap.jpg'),
+        stageColor: config.board?.stageColor || '#EFE8D6',
+        backgroundColor: config.board?.backgroundColor || '#D8C6A4',
+        cellCount: Math.max(4, Math.min(40, numberOr(config.board?.cellCount, 12))),
+      },
+      rules: {
+        startGold: numberOr(config.rules?.startGold, 10000),
+        salary: numberOr(config.rules?.salary, 2000),
+        taxAmount: numberOr(config.rules?.taxAmount, 1000),
+        bonusAmount: numberOr(config.rules?.bonusAmount, 2000),
+        eventMin: numberOr(config.rules?.eventMin, -2000),
+        eventMax: numberOr(config.rules?.eventMax, 3000),
+        eventStep: numberOr(config.rules?.eventStep, 1000),
+        jailTurns: numberOr(config.rules?.jailTurns, 3),
+        winGold: Number.isFinite(queryWinGold) ? queryWinGold : numberOr(config.rules?.winGold, 50000),
+        winLaps: numberOr(config.rules?.winLaps, 5),
+        tollRate: numberOr(config.rules?.tollRate, 0.3),
+        diceCount: Number.isFinite(queryDice) ? clamp(queryDice, 1, 3) : clamp(numberOr(config.rules?.diceCount, 2), 1, 3),
+      },
+      bgm: {
+        kind: queryBgm || config.bgm?.kind || 'off',
+      },
+      dice: {
+        label: String(config.dice?.label || '기본 주사위').slice(0, 24),
+        emoji: String(config.dice?.emoji || '🎲').slice(0, 4),
+        theme: String(config.dice?.theme || 'classic'),
+        imageUrl: String(config.dice?.imageUrl || ''),
+      },
+      cities: Array.isArray(config.cities) && config.cities.length ? config.cities : buildDefaultCityData(createLoopCells(numberOr(config.board?.cellCount, 12))),
+      lessonOneCells: Array.isArray(config.lessonOneCells) ? config.lessonOneCells : [],
+      players,
+      ui: {
+        hideHud: !!config.ui?.hideHud,
+        hideTokens: !!config.ui?.hideTokens,
+        showCoordinates: !!config.ui?.showCoordinates,
+        usePinTokens: !!config.ui?.usePinTokens,
+        simpleBoard: !!config.ui?.simpleBoard,
+        disableCellEffects: !!config.ui?.disableCellEffects,
+        disableWin: !!config.ui?.disableWin,
+        lessonTheme: String(config.ui?.lessonTheme || 'default'),
+        boardRotation: numberOr(config.ui?.boardRotation, 0),
+        cityBuyChoice: !!config.ui?.cityBuyChoice,
+      },
+    };
+  }
+
+  function buildCells(defaultCells, config) {
+    if (config.ui?.simpleBoard) {
+      if (!config.board?.backgroundImageUrl) {
+        document.documentElement.style.setProperty('--board-bg', 'none');
+      }
+      const customCells = new Map((config.lessonOneCells || []).map((cell) => [cell.index, cell]));
+      return defaultCells.map((cell, index) => {
+        const custom = customCells.get(index);
+        const label = custom?.label || `${index}번 칸`;
+        const desc = custom?.desc || `${label} 칸이에요.`;
+        return {
+          ...cell,
+          type: detectLessonCellType(label, desc),
+          label,
+          ico: cell.ico || '📍',
+          desc,
+          ownerId: null,
+          price: 0,
+        };
+      });
+    }
+    const next = defaultCells.map((cell) => ({ ...cell, ownerId: null, price: cell.price || 0, toll: cell.toll || 0 }));
+    const customCells = new Map((config.lessonOneCells || []).map((cell) => [cell.index, cell]));
+    next.forEach((cell, index) => {
+      const custom = customCells.get(index);
+      if (!custom) return;
+      cell.label = custom.label || cell.label;
+      if (custom.desc) cell.desc = custom.desc;
+    });
+    const cityIndexes = next.reduce((acc, cell, index) => {
+      if (cell.type === 'city') acc.push(index);
+      return acc;
+    }, []);
+    const indexedSources = config.cities.filter((city) => Number.isInteger(city.index));
+    const freeSources = config.cities.filter((city) => !Number.isInteger(city.index));
+    indexedSources.forEach((source) => {
+      const cell = next[source.index];
+      if (!cell) return;
+      const landmark = source.landmark || source.desc || cell.desc;
+      cell.type = 'city';
+      cell.label = source.label || cell.label;
+      cell.ico = source.ico || cell.ico || '🏙️';
+      cell.toll = numberOr(source.toll, 1500);
+      cell.price = numberOr(source.price, cell.toll * 3);
+      cell.landmark = landmark;
+      cell.desc = `${landmark} · 통행세 ${cell.toll.toLocaleString()}골드`;
+    });
+    cityIndexes.forEach((cellIndex, order) => {
+      const source = freeSources[order];
+      if (!source) return;
+      const cell = next[cellIndex];
+      const landmark = source.landmark || source.desc || cell.desc;
+      cell.label = source.label || cell.label;
+      cell.ico = source.ico || cell.ico;
+      cell.toll = numberOr(source.toll, 1500 + order * 200);
+      cell.price = numberOr(source.price, cell.toll * 3);
+      cell.landmark = landmark;
+      cell.desc = `${landmark} · 통행세 ${cell.toll.toLocaleString()}골드`;
+    });
+    next.forEach((cell) => {
+      if (cell.type === 'event') cell.desc = `랜덤 ${formatSigned(config.rules.eventMin)} ~ ${formatSigned(config.rules.eventMax)}골드`;
+      if (cell.type === 'tax') cell.desc = `세금 -${config.rules.taxAmount.toLocaleString()}골드`;
+      if (cell.type === 'bonus') cell.desc = `보너스 +${config.rules.bonusAmount.toLocaleString()}골드`;
+      if (cell.type === 'jail') cell.desc = `무인도! ${config.rules.jailTurns}턴 동안 주사위를 못 굴려요.`;
+      if (cell.type === 'start') cell.desc = `한 바퀴 돌면 월급 +${config.rules.salary.toLocaleString()}골드!`;
+    });
+    return next;
+  }
+
+  function getCellOutward(idx) {
+    const cell = CELLS[idx];
+    if (!cell) return { dx: 0, dy: 0 };
+    const dx = cell.x - 50;
+    const dy = cell.y - 50;
+    const length = Math.hypot(dx, dy) || 1;
+    return {
+      dx: Math.round((dx / length) * 5),
+      dy: Math.round((dy / length) * 5),
+    };
+  }
+
+  function renderCells() {
+    const cellSize = CELLS.length <= 12 ? 8.5 : (CELLS.length <= 20 ? 6.2 : 4.8);
+    CELLS.forEach((cell, index) => {
+      const el = document.createElement('div');
+      el.className = `cell type-${cell.type}`;
+      if (CONFIG.ui.showCoordinates) el.classList.add('show-coordinates');
+      el.dataset.idx = index;
+      el.style.left = `${cell.x}%`;
+      el.style.top = `${cell.y}%`;
+      el.style.width = `${cellSize}%`;
+      el.title = `${index}. ${cell.label}`;
+      if (CONFIG.ui.showCoordinates) {
+        const badge = document.createElement('span');
+        badge.className = 'cell-index';
+        badge.textContent = String(index);
+        el.appendChild(badge);
+      }
+      el.addEventListener('click', () => showCellInfo(index));
+      board.appendChild(el);
+    });
+  }
+
+  function renderWorksheetDecorations() {
+    if (CONFIG.ui.lessonTheme !== 'worksheet') return;
+    board.classList.add('board-theme-worksheet');
+    // AI 생성 배경 이미지가 있으면 has-bg-image 클래스로 크림 오버레이를 끔
+    // (CSS::after 가 이미지를 가리는 문제 fix). 인라인 배경 스타일은 위쪽에서 적용됨.
+    if (CONFIG.board.backgroundImageUrl) {
+      board.classList.add('has-bg-image');
+    }
+    const topbar = document.createElement('div');
+    topbar.className = 'worksheet-topbar';
+    topbar.innerHTML = `
+      <div class="worksheet-logo">🎲 부루마블</div>
+      <div class="worksheet-topbar-spacer"></div>
+      <div class="worksheet-hud">
+        <span class="worksheet-chip gold" id="worksheet-gold">🪙 10,000</span>
+        <span class="worksheet-chip" id="worksheet-pos">📍 0번칸</span>
+        <span class="worksheet-chip turn" id="worksheet-turn">▶ 내 차례</span>
+      </div>
+    `;
+    board.appendChild(topbar);
+
+    const deck = document.createElement('div');
+    deck.className = 'worksheet-deck';
+    deck.innerHTML = `
+      <div class="worksheet-deck-card gold">황금<br>카드</div>
+      <div class="worksheet-deck-card">기회<br>카드</div>
+      <div class="worksheet-deck-card red">보너스</div>
+    `;
+    board.appendChild(deck);
+
+    const turnNote = document.createElement('div');
+    turnNote.className = 'worksheet-turn-note';
+    turnNote.id = 'worksheet-turn-note';
+    turnNote.textContent = '슬기 차례 · 남은 시간 8s';
+    board.appendChild(turnNote);
+
+    const aiBadge = document.createElement('div');
+    aiBadge.className = 'worksheet-ai-badge';
+    aiBadge.innerHTML = '<span class="worksheet-ai-face"></span><span>슬기 AI</span>';
+    board.appendChild(aiBadge);
+  }
+
+  function renderHud() {
+    if (CONFIG.ui.hideHud) {
+      hud.innerHTML = '';
+      hud.style.display = 'none';
+      return;
+    }
+    hud.style.display = '';
+    hud.innerHTML = '';
+    const group = document.createElement('div');
+    group.className = 'hud-group';
+    state.players.forEach((player, index) => {
+      const label = document.createElement('span');
+      label.className = 'hud-chip';
+      label.id = `label-p${index}`;
+      label.textContent = `${player.emoji || '🎮'} ${player.name}${player.isHuman ? ' (나)' : ''}`;
+      const gold = document.createElement('span');
+      gold.className = 'hud-chip gold';
+      gold.id = `gold-p${index}`;
+      group.appendChild(label);
+      group.appendChild(gold);
+    });
+    const spacer = document.createElement('span');
+    spacer.className = 'hud-spacer';
+    const turn = document.createElement('span');
+    turn.className = 'hud-chip turn';
+    turn.id = 'turn-chip';
+    hud.appendChild(group);
+    hud.appendChild(spacer);
+    hud.appendChild(turn);
+  }
+
+  function placeToken(tokenEl, player) {
+    const cell = CELLS[player.pos];
+    const out = getCellOutward(player.pos);
+    const lateralOffsets = [-16, 16, -8, 8];
+    const verticalOffsets = [-6, -6, 10, 10];
+    tokenEl.style.left = `calc(${cell.x}% + ${(lateralOffsets[player.index] || 0) + out.dx + 5}px)`;
+    tokenEl.style.top = `calc(${cell.y}% + ${(verticalOffsets[player.index] || 0) + out.dy}px)`;
+  }
+
+  function renderTokens() {
+    board.querySelectorAll('.token').forEach((token) => token.remove());
+    if (CONFIG.ui.hideTokens) {
+      document.querySelectorAll('.cell').forEach((c) => c.classList.remove('is-current'));
+      return;
+    }
+    state.players.forEach((player) => {
+      const el = document.createElement('div');
+      el.className = `token ${player.id}`;
+      if (CONFIG.ui.usePinTokens) el.classList.add('pin-token');
+      el.id = `token-${player.id}`;
+      el.setAttribute('aria-label', player.name);
+      if (CONFIG.ui.usePinTokens) {
+        el.style.setProperty('--pin-color', player.pinColor || (player.isHuman ? 'var(--color-red)' : 'var(--color-blue)'));
+        const pinInner = document.createElement('span');
+        pinInner.className = 'pin-inner';
+        pinInner.textContent = player.isHuman ? '1' : '2';
+        el.appendChild(pinInner);
+      } else if (player.imageUrl) {
+        el.style.backgroundImage = `url('${player.imageUrl}')`;
+      } else {
+        el.textContent = player.emoji || '🎮';
+      }
+      const name = document.createElement('span');
+      name.className = 'token-name';
+      name.textContent = player.name;
+      el.appendChild(name);
+      board.appendChild(el);
+      placeToken(el, player);
+    });
+    document.querySelectorAll('.cell').forEach((c) => c.classList.remove('is-current'));
+  }
+
+  function updateHud() {
+    state.players.forEach((player, index) => {
+      const gold = document.getElementById(`gold-p${index}`);
+      if (gold) gold.textContent = `🪙 ${player.gold.toLocaleString()}`;
+    });
+    const current = state.players[state.turnIndex];
+    const turnChip = document.getElementById('turn-chip');
+    const isAI = current && !current.isHuman;
+    if (turnChip) {
+      turnChip.textContent = `▶ ${current ? current.name : ''} 차례`;
+      turnChip.classList.toggle('is-ai', !!isAI);
+    }
+    const worksheetGold = document.getElementById('worksheet-gold');
+    if (worksheetGold) {
+      const me = state.players[0];
+      worksheetGold.textContent = `🪙 ${(me?.gold || 0).toLocaleString()}`;
+    }
+    const worksheetPos = document.getElementById('worksheet-pos');
+    if (worksheetPos) {
+      worksheetPos.textContent = `📍 ${current ? current.pos : 0}번칸`;
+    }
+    const worksheetTurn = document.getElementById('worksheet-turn');
+    if (worksheetTurn) {
+      worksheetTurn.textContent = `▶ ${current ? current.name : ''} 차례`;
+    }
+    const worksheetTurnNote = document.getElementById('worksheet-turn-note');
+    if (worksheetTurnNote) {
+      worksheetTurnNote.textContent = `${current ? current.name : '플레이어'} 차례`;
+    }
+    rollBtn.disabled = state.busy || !!state.winner || isAI;
+  }
+
+  let toastTimer = null;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('is-shown');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('is-shown'), 2200);
+  }
+
+  function openModal(buildFn) {
+    const overlay = document.createElement('div');
+    overlay.className = 'overlay';
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    const close = () => overlay.remove();
+    buildFn(modal, close);
+    return { close };
+  }
+
+  function showCellInfo(idx) {
+    const c = CELLS[idx];
+    openModal((m, close) => {
+      const typeLabel = ({
+        start:'출발', city:'도시', event:'황금카드', tax:'세금',
+        travel:'여행', jail:'무인도', space:'우주여행', bonus:'사회복지',
+        plain:'기본 칸',
+      })[c.type] || c.type;
+      const owner = c.ownerId ? state.players.find((player) => player.id === c.ownerId) : null;
+      m.innerHTML = `
+        <div class="cell-info-emoji">${c.ico}</div>
+        <div class="cell-info-type">${typeLabel} · ${idx}번 칸</div>
+        <h2>${c.label}</h2>
+        <div class="cell-info-effect">${c.desc}${owner ? `<br>소유자: ${owner.name}` : ''}</div>`;
+      const btn = document.createElement('button');
+      btn.className = 'btn ghost';
+      btn.textContent = '닫기';
+      btn.onclick = close;
+      m.appendChild(btn);
+    });
+  }
+
+  function openDiceModal(player, onResult) {
+    openModal((m, close) => {
+      let phase = 'ready';
+      const dice = Array(CONFIG.rules.diceCount).fill(1);
+      // dice.imageUrl 가 있으면 이미지로, 없으면 emoji 로 렌더
+      const diceShapeHtml = CONFIG.dice.imageUrl
+        ? `<img class="die-shape-img" src="${CONFIG.dice.imageUrl}" alt="">`
+        : `<span class="die-shape" aria-hidden="true">${CONFIG.dice.emoji}</span>`;
+      const headIconHtml = CONFIG.dice.imageUrl
+        ? `<img class="die-head-img" src="${CONFIG.dice.imageUrl}" alt="">`
+        : CONFIG.dice.emoji;
+      const dieImageClass = CONFIG.dice.imageUrl ? ' has-image' : '';
+      const diceHtml = dice.map((v, i) => `
+        <div class="die theme-${CONFIG.dice.theme}${dieImageClass}" id="d${i}" aria-label="주사위 ${v}">
+          ${diceShapeHtml}
+          <span class="die-face">${v}</span>
+        </div>
+      `).join('');
+      m.innerHTML = `
+        <h2>${headIconHtml} ${player.name}의 ${CONFIG.dice.label}!</h2>
+        <div class="dice-pair">${diceHtml}</div>
+        <div class="dice-result" id="dr">주사위를 굴려보자!</div>
+      `;
+      const btn = document.createElement('button');
+      btn.className = 'btn';
+      btn.textContent = '굴리기';
+      m.appendChild(btn);
+      const dieEls = dice.map((_, i) => m.querySelector(`#d${i}`));
+      const dr = m.querySelector('#dr');
+      const setDieFace = (dieEl, value) => {
+        if (!dieEl) return;
+        const face = dieEl.querySelector('.die-face');
+        if (face) face.textContent = String(value);
+        dieEl.setAttribute('aria-label', `주사위 ${value}`);
+      };
+      const roll = () => {
+        if (phase !== 'ready') return;
+        phase = 'rolling';
+        btn.disabled = true;
+        dieEls.forEach((die) => die.classList.add('is-rolling'));
+        dr.textContent = '굴리는 중…';
+        const flicker = setInterval(() => {
+          dieEls.forEach((die) => { setDieFace(die, 1 + Math.floor(Math.random() * 6)); });
+        }, 80);
+        setTimeout(() => {
+          clearInterval(flicker);
+          for (let i = 0; i < dice.length; i++) {
+            dice[i] = 1 + Math.floor(Math.random() * 6);
+            setDieFace(dieEls[i], dice[i]);
+            dieEls[i].classList.remove('is-rolling');
+          }
+          phase = 'done';
+          const total = dice.reduce((a, b) => a + b, 0);
+          const same = dice.length >= 2 && dice.every((value) => value === dice[0]);
+          dr.classList.toggle('is-double', same);
+          dr.innerHTML = same
+            ? `🎉 모두 ${dice[0]}! 합계 <strong>${total}</strong>칸!`
+            : `합계 <strong>${total}</strong>칸 이동!`;
+          btn.textContent = `${total}칸 이동 →`;
+          btn.disabled = false;
+          btn.onclick = () => { close(); onResult(total); };
+          if (!player.isHuman && state.aiAuto) setTimeout(() => btn.click(), 1100);
+        }, 900);
+      };
+      btn.onclick = roll;
+      if (!player.isHuman && state.aiAuto) setTimeout(roll, 500);
+    });
+  }
+
+  let moveInProgress = false;
+  function movePlayer(steps, onDone) {
+    if (moveInProgress) return;
+    moveInProgress = true;
+    const player = state.players[state.turnIndex];
+    let remaining = steps;
+    const stepOnce = () => {
+      if (remaining <= 0) {
+        moveInProgress = false;
+        document.querySelectorAll('.cell').forEach((cell) => cell.classList.remove('is-current'));
+        const dest = document.querySelector(`.cell[data-idx="${player.pos}"]`);
+        if (dest) dest.classList.add('is-current');
+        setTimeout(() => onDone(player), 400);
+        return;
+      }
+      player.pos = (player.pos + 1) % CELLS.length;
+      if (!CONFIG.ui.disableCellEffects && player.pos === 0) {
+        player.laps += 1;
+        const salaryGain = CONFIG.rules.salary + getSalaryBonus(player);
+        player.gold += salaryGain;
+        toast(`${player.name} 월급 +${salaryGain.toLocaleString()}골드!`);
+      }
+      const tokenEl = document.getElementById(`token-${player.id}`);
+      if (tokenEl) {
+        placeToken(tokenEl, player);
+        tokenEl.classList.remove('is-hopping');
+        void tokenEl.offsetWidth;
+        tokenEl.classList.add('is-hopping');
+      }
+      updateHud();
+      remaining -= 1;
+      setTimeout(stepOnce, 420);
+    };
+    stepOnce();
+  }
+
+  function buildEventChoices(min, max, step) {
+    const values = [];
+    const safeStep = Math.max(100, step || 1000);
+    for (let value = min; value <= max; value += safeStep) values.push(value);
+    return values.length ? values : [-2000, -1000, 1000, 2000, 3000];
+  }
+
+  function getSalaryBonus(player) {
+    return player.ability?.type === 'salary_bonus' ? numberOr(player.ability.amount, 0) : 0;
+  }
+
+  function getCityDiscount(player) {
+    return player.ability?.type === 'city_discount' ? clamp(numberOr(player.ability.percent, 0), 0, 0.8) : 0;
+  }
+
+  function getJailReduction(player) {
+    return player.ability?.type === 'jail_reduction' ? numberOr(player.ability.turns, 0) : 0;
+  }
+
+  function getEventMultiplier(player) {
+    return player.ability?.type === 'event_multiplier' ? numberOr(player.ability.factor, 1) : 1;
+  }
+
+  function snapToken(player) {
+    const tokenEl = document.getElementById(`token-${player.id}`);
+    if (tokenEl) placeToken(tokenEl, player);
+  }
+
+  function handleCityCell(player, cell, done) {
+    const price = numberOr(cell.price, 5000);
+    if (!cell.ownerId) {
+      const finalPrice = Math.max(0, Math.round(price * (1 - getCityDiscount(player))));
+      // 3차시 한정: human 학생이 도시 매입 가능할 때 [구입]/[지나가기] 모달 표시.
+      // AI 상대는 기존 자동 매입 흐름 유지 (게임 stall 방지).
+      if (CONFIG.ui.cityBuyChoice && player.isHuman && player.gold >= finalPrice) {
+        openCityBuyModal(player, cell, finalPrice, done);
+        return;
+      }
+      if (player.gold >= finalPrice) {
+        player.gold -= finalPrice;
+        cell.ownerId = player.id;
+        toast(`🏙️ ${player.name} ${cell.label} 매입! -${finalPrice.toLocaleString()}골드`);
+        updateHud();
+      } else {
+        toast(`😥 ${cell.label} 매입 실패. ${finalPrice.toLocaleString()}골드가 필요해요.`);
+      }
+      setTimeout(done, 800);
+      return;
+    }
+    if (cell.ownerId === player.id) {
+      toast(`😊 ${player.name}의 ${cell.label}!`);
+      setTimeout(done, 700);
+      return;
+    }
+    const owner = state.players.find((p) => p.id === cell.ownerId);
+    const toll = numberOr(cell.toll, Math.max(500, Math.round(price * CONFIG.rules.tollRate)));
+    player.gold = Math.max(0, player.gold - toll);
+    if (owner) owner.gold += toll;
+    toast(`💸 ${player.name} 통행료 -${toll.toLocaleString()}골드`);
+    updateHud();
+    setTimeout(done, 800);
+  }
+
+  // 3차시 한정: 학생(human) 이 도시에 도착하고 매입 가능할 때 표시되는 선택 모달.
+  // [✅ 구입] → gold 차감 + ownerId 등록 + done.   [지나가기] → done (매입 안 함).
+  function openCityBuyModal(player, cell, finalPrice, done) {
+    openModal((m, close) => {
+      m.innerHTML = `
+        <div class="cell-info-emoji">${cell.ico || '🏙️'}</div>
+        <div class="cell-info-type">도시 · ${cell.label}</div>
+        <h2>${cell.label} 매입하시겠습니까?</h2>
+        <div class="cell-info-effect">
+          가격 <strong>${finalPrice.toLocaleString()}골드</strong><br>
+          내 돈 <strong>${player.gold.toLocaleString()}골드</strong>
+        </div>
+      `;
+      const buy = document.createElement('button');
+      buy.className = 'btn';
+      buy.textContent = '✅ 구입';
+      buy.onclick = () => {
+        close();
+        player.gold -= finalPrice;
+        cell.ownerId = player.id;
+        toast(`🏙️ ${player.name} ${cell.label} 매입! -${finalPrice.toLocaleString()}골드`);
+        updateHud();
+        setTimeout(done, 600);
+      };
+      const skip = document.createElement('button');
+      skip.className = 'btn ghost';
+      skip.textContent = '지나가기';
+      skip.onclick = () => {
+        close();
+        toast(`🚶 ${player.name} ${cell.label} 그냥 지나갔어요`);
+        setTimeout(done, 400);
+      };
+      m.appendChild(buy);
+      m.appendChild(skip);
+    });
+  }
+
+  function applyCellEffect(player, doneAfterEffect) {
+    if (CONFIG.ui.disableCellEffects) {
+      doneAfterEffect();
+      return;
+    }
+    const cell = CELLS[player.pos];
+    const finish = () => doneAfterEffect();
+    switch (cell.type) {
+      case 'start':
+        finish();
+        break;
+      case 'city':
+        handleCityCell(player, cell, finish);
+        break;
+      case 'tax':
+        player.gold = Math.max(0, player.gold - CONFIG.rules.taxAmount);
+        toast(`${player.name} 세금 -${CONFIG.rules.taxAmount.toLocaleString()}골드 😣`);
+        updateHud();
+        setTimeout(finish, 700);
+        break;
+      case 'event': {
+        const choices = buildEventChoices(CONFIG.rules.eventMin, CONFIG.rules.eventMax, CONFIG.rules.eventStep);
+        const base = choices[Math.floor(Math.random() * choices.length)];
+        const amount = Math.round(base * getEventMultiplier(player));
+        player.gold = Math.max(0, player.gold + amount);
+        toast(`${amount >= 0 ? '🎉' : '💸'} 황금카드! ${formatSigned(amount)}골드`);
+        updateHud();
+        setTimeout(finish, 800);
+        break;
+      }
+      case 'travel': {
+        let next = (player.pos + 1) % CELLS.length;
+        while (next !== player.pos && CELLS[next].type !== 'travel') next = (next + 1) % CELLS.length;
+        if (next === player.pos) {
+          const cityTargets = CELLS.map((c, i) => ({ c, i })).filter(({ c, i }) => i !== player.pos && c.type === 'city');
+          next = cityTargets.length ? cityTargets[Math.floor(Math.random() * cityTargets.length)].i : player.pos;
+        }
+        const passedStart = next < player.pos;
+        player.pos = next;
+        if (passedStart) {
+          player.laps += 1;
+          player.gold += CONFIG.rules.salary + getSalaryBonus(player);
+        }
+        toast(`✈️ ${CELLS[next].label}로 여행!`);
+        snapToken(player);
+        updateHud();
+        setTimeout(finish, 800);
+        break;
+      }
+      case 'jail':
+        player.jailTurns = Math.max(0, CONFIG.rules.jailTurns - getJailReduction(player));
+        toast(`🏝️ ${player.name} 무인도! ${player.jailTurns}턴 동안 못 움직여요`);
+        setTimeout(finish, 800);
+        break;
+      case 'space': {
+        const candidates = CELLS.map((c, i) => ({ c, i })).filter(({ c, i }) => i !== player.pos && c.type !== 'jail' && c.type !== 'space');
+        const pick = candidates[Math.floor(Math.random() * candidates.length)];
+        player.pos = pick.i;
+        toast(`🚀 우주여행! ${pick.c.label}로 텔레포트`);
+        snapToken(player);
+        setTimeout(finish, 900);
+        break;
+      }
+      case 'bonus':
+        player.gold += CONFIG.rules.bonusAmount;
+        toast(`🎁 사회복지! +${CONFIG.rules.bonusAmount.toLocaleString()}골드`);
+        updateHud();
+        setTimeout(finish, 800);
+        break;
+      default:
+        finish();
+    }
+  }
+
+  function nextTurn() {
+    if (state.winner) return;
+    state.turnIndex = (state.turnIndex + 1) % state.players.length;
+    state.busy = false;
+    updateHud();
+    const player = state.players[state.turnIndex];
+    if (player.jailTurns > 0) {
+      player.jailTurns -= 1;
+      toast(`🏝️ ${player.name} 무인도 (${player.jailTurns}턴 남음)`);
+      setTimeout(() => nextTurn(), 1000);
+      return;
+    }
+    if (!player.isHuman && state.aiAuto) setTimeout(() => startTurn(), 700);
+  }
+
+  function startTurn() {
+    if (state.busy || state.winner) return;
+    const player = state.players[state.turnIndex];
+    if (player.jailTurns > 0) return;
+    state.busy = true;
+    updateHud();
+    openDiceModal(player, (total) => {
+      movePlayer(total, (movedPlayer) => {
+        applyCellEffect(movedPlayer, () => {
+          checkWin();
+          nextTurn();
+        });
+      });
+    });
+  }
+
+  function checkWin() {
+    if (CONFIG.ui.disableWin) return;
+    const reachedLaps = CONFIG.rules.winLaps > 0 && state.players.some((player) => player.laps >= CONFIG.rules.winLaps);
+    if (reachedLaps) {
+      const richest = [...state.players].sort((a, b) => b.gold - a.gold)[0];
+      state.winner = richest.id;
+      state.finishReason = `${CONFIG.rules.winLaps}바퀴 후 가장 부자`;
+    } else {
+      state.players.forEach((player) => {
+        if (player.gold >= CONFIG.rules.winGold && !state.winner) {
+          state.winner = player.id;
+          state.finishReason = `${CONFIG.rules.winGold.toLocaleString()}골드 달성`;
+        }
+      });
+    }
+    if (!state.winner) return;
+    const winner = state.players.find((player) => player.id === state.winner);
+    openModal((m, close) => {
+      m.innerHTML = `
+        <div style="font-size:64px">🏆</div>
+        <h2>${winner.name} 승리!</h2>
+        <p><strong style="color:var(--color-red)">${state.finishReason}</strong></p>
+        <div style="width:100%;font-size:13px;color:var(--color-brown-soft)">
+          ${state.players.map((player) => `${player.name}: ${player.gold.toLocaleString()}골드 · ${player.laps}바퀴`).join('<br>')}
+        </div>`;
+      const restart = document.createElement('button');
+      restart.className = 'btn';
+      restart.textContent = '다시 하기 ↻';
+      restart.onclick = () => { close(); resetGame(); };
+      m.appendChild(restart);
+    });
+  }
+
+  function resetGame() {
+    state.players.forEach((player, index) => {
+      player.pos = 0;
+      player.gold = CONFIG.rules.startGold;
+      player.jailTurns = 0;
+      player.laps = 0;
+      player.index = index;
+    });
+    CELLS.forEach((cell) => { if (cell.type === 'city') cell.ownerId = null; });
+    state.turnIndex = 0;
+    state.busy = false;
+    state.winner = null;
+    state.finishReason = null;
+    document.querySelectorAll('.cell').forEach((cell) => cell.classList.remove('is-current'));
+    renderTokens();
+    updateHud();
+    toast('새 게임 시작!');
+  }
+
+  rollBtn.addEventListener('click', startTurn);
+  rollBtn.classList.add(`theme-${CONFIG.dice.theme}`);
+  if (rollEmoji) {
+    if (CONFIG.dice.imageUrl) {
+      rollEmoji.innerHTML = `<img class="die-btn-img" src="${CONFIG.dice.imageUrl}" alt="">`;
+    } else {
+      rollEmoji.textContent = CONFIG.dice.emoji;
+    }
+  }
+  if (rollLabel) rollLabel.textContent = `${CONFIG.dice.label} 굴리기`;
+
+  const BGM_PRESETS = {
+    adventure: { notes:[262, 392, 440, 392, 349, 294, 262, 330], tempo:.32, type:'triangle', vol:.05 },
+    calm:      { notes:[262, 330, 392, 330, 349, 294, 262, 220], tempo:.7, type:'sine', vol:.04 },
+    upbeat:    { notes:[262, 294, 330, 392, 330, 392, 440, 392], tempo:.22, type:'square', vol:.04 },
+    off:       null,
+  };
+  let bgmStarted = false;
+  function startBGM() {
+    if (bgmStarted) return;
+    bgmStarted = true;
+    const preset = BGM_PRESETS[CONFIG.bgm.kind];
+    if (!preset) return;
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    let i = 0;
+    setInterval(() => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = preset.type;
+      osc.frequency.value = preset.notes[i % preset.notes.length];
+      osc.connect(gain).connect(ctx.destination);
+      gain.gain.setValueAtTime(preset.vol, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + preset.tempo);
+      osc.start();
+      osc.stop(ctx.currentTime + preset.tempo);
+      i += 1;
+    }, preset.tempo * 1000);
+  }
+  document.addEventListener('click', startBGM, { once:true });
+
+  renderWorksheetDecorations();
+  renderCells();
+  renderHud();
+  renderTokens();
+  updateHud();
+  console.log('[부루마블 설정]', CONFIG);
+  setTimeout(() => {
+    const me = state.players[0];
+    toast(`🎲 ${CONFIG.title} · ${me.name} · 주사위 ${CONFIG.rules.diceCount}개`);
+  }, 400);
+
+  // E2E 테스트용 내부 익스포트 — iframe sandbox 안이라 외부 영향 없음.
+  // (CONFIG 는 이미 window.__GONGDO_MARBLE_CONFIG__ 에 노출됨)
+  window.__GONGDO_MARBLE_TEST__ = { state, CELLS, CONFIG, handleCityCell };
+})();
+</script>
+</body>
+</html>

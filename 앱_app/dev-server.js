@@ -112,16 +112,38 @@ const server = createServer(async (req, res) => {
     }
 
     // ─── 정적 파일 ───
+    // macOS HFS+ 는 한글 파일명을 NFD 로 저장하지만 브라우저는 NFC 로 인코딩된 URL 을 보내므로
+    // Linux 컨테이너에서는 양쪽 정규화 모두 시도해야 한글 경로가 안전하게 매핑됨.
     let pathname = decoded === '/' ? '/index.html' : decoded;
-    const filePath = join(ROOT, pathname);
+    const candidates = [pathname, pathname.normalize('NFC'), pathname.normalize('NFD')];
+    const tried = new Set();
+    let resolved = null;
+    let resolvedStat = null;
+    for (const candidate of candidates) {
+      if (tried.has(candidate)) continue;
+      tried.add(candidate);
+      const fp = join(ROOT, candidate);
+      try {
+        const st = await stat(fp);
+        resolved = { fp, candidate };
+        resolvedStat = st;
+        break;
+      } catch {
+        // 다음 후보 시도
+      }
+    }
+    if (!resolved) {
+      res.statusCode = 404;
+      return res.end('Not found');
+    }
     try {
-      const st = await stat(filePath);
-      if (st.isDirectory()) {
-        res.writeHead(302, { Location: pathname.endsWith('/') ? pathname + 'index.html' : pathname + '/index.html' });
+      if (resolvedStat.isDirectory()) {
+        const target = resolved.candidate.endsWith('/') ? resolved.candidate + 'index.html' : resolved.candidate + '/index.html';
+        res.writeHead(302, { Location: target });
         return res.end();
       }
-      const buf = await readFile(filePath);
-      const type = MIME[extname(pathname).toLowerCase()] || 'application/octet-stream';
+      const buf = await readFile(resolved.fp);
+      const type = MIME[extname(resolved.candidate).toLowerCase()] || 'application/octet-stream';
       res.setHeader('Content-Type', type);
       res.setHeader('Cache-Control', 'no-store');
       res.end(buf);

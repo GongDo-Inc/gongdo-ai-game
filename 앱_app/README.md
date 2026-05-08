@@ -17,20 +17,20 @@ npx serve .
 ```
 앱_app/
 ├─ index.html                    학생 진입 페이지
-├─ 공용_public/
-│  ├─ css_스타일/
+├─ public/
+│  ├─ css/
 │  │  ├─ reset.css               기본 리셋 + 접근성 유틸
 │  │  ├─ palette.css             브랜드 팔레트 (CSS 변수)
 │  │  ├─ layout.css              4-pane 레이아웃
 │  │  └─ components.css          버튼·모달·드로어·튜터 컴포넌트
-│  ├─ js_스크립트/
+│  ├─ js/
 │  │  └─ app.js                  S01 상호작용 (Mock)
 │  └─ 이미지_images/              UI 이미지 (로고·아이콘)
 ├─ api_서버함수/                  Vercel Edge (S04~S15에서 채움)
-├─ 차시_lessons/                  하네스 문서 (S02에서 채움)
-└─ 에셋_assets/
-   ├─ 캐릭터_characters/          ㅋㅋ·토리·밥·레옹 (S10~S12)
-   └─ 배경_backgrounds/           지구본 맵 등
+├─ lessons/                  하네스 문서 (S02에서 채움)
+└─ assets/
+   ├─ characters/          ㅋㅋ·토리·밥·레옹 (S10~S12)
+   └─ backgrounds/           지구본 맵 등
 ```
 
 ## ✅ S01 완료 체크리스트

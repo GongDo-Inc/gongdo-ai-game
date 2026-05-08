@@ -4,7 +4,7 @@
  */
 
 const OPENAI_IMAGE_URL = 'https://api.openai.com/v1/images/generations';
-const MODEL = 'gpt-image-1.5';
+const MODEL = 'gpt-image-1';
 
 function parseBody(body) {
   if (!body) return {};
@@ -15,7 +15,7 @@ function parseBody(body) {
   return {};
 }
 
-function buildPrompt(rawPrompt) {
+function buildBoardPrompt(rawPrompt) {
   const prompt = String(rawPrompt || '').trim();
   return [
     'Create a background illustration that will be placed BEHIND a square 12-cell board game board.',
@@ -33,6 +33,27 @@ function buildPrompt(rawPrompt) {
   ].join('\n');
 }
 
+function buildDicePrompt(rawPrompt) {
+  const prompt = String(rawPrompt || '').trim();
+  return [
+    'Create a small centered icon of a SIX-SIDED DIE styled with the theme described below.',
+    'The die should have a recognizable cube shape with rounded corners, but its texture, color, and decoration should reflect the theme.',
+    '',
+    '[Theme]',
+    prompt,
+    '',
+    '[Art direction]',
+    'Square composition; the die fills most of the frame and is centered.',
+    'Clean, plain background (white or very light pastel) — no scenes, no extra objects.',
+    'No text, no numbers, no pips visible on the die faces — just the styled die shape.',
+    'Cute, flat illustration style with soft shadows; suitable for Korean elementary students.',
+  ].join('\n');
+}
+
+function buildPrompt(rawPrompt, kind) {
+  return kind === 'dice' ? buildDicePrompt(rawPrompt) : buildBoardPrompt(rawPrompt);
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', 'POST');
@@ -46,8 +67,9 @@ export default async function handler(req, res) {
 
   const body = parseBody(req.body);
   const prompt = String(body?.prompt || '').trim();
+  const kind = body?.kind === 'dice' ? 'dice' : 'board';
   if (!prompt) {
-    return res.status(400).json({ error: 'missing_prompt', message: '배경 설명이 비어 있어요.' });
+    return res.status(400).json({ error: 'missing_prompt', message: '프롬프트가 비어 있어요.' });
   }
 
   try {
@@ -59,10 +81,14 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         model: MODEL,
-        prompt: buildPrompt(prompt),
-        size: '1536x1024',
-        quality: 'medium',
-        output_format: 'png',
+        prompt: buildPrompt(prompt, kind),
+        // 보드판 위에 셀/토큰이 덮이므로 'low' 품질로 충분 — 생성 속도 ~10s 단축
+        // gpt-image-1 은 1024 가 최소 size. 대신 output_format 을 webp 로 두고 output_compression 으로
+        // base64 페이로드를 PNG 대비 60~80% 줄임 (Storage 5MB 한도·HTML 인라인 base64 비대화 대응).
+        size: '1024x1024',
+        quality: 'low',
+        output_format: 'webp',
+        output_compression: 75,
         background: 'opaque',
       }),
     });
@@ -75,7 +101,7 @@ export default async function handler(req, res) {
       });
     }
 
-    const imageUrl = data?.data?.[0]?.url || (data?.data?.[0]?.b64_json ? `data:image/png;base64,${data.data[0].b64_json}` : '');
+    const imageUrl = data?.data?.[0]?.url || (data?.data?.[0]?.b64_json ? `data:image/webp;base64,${data.data[0].b64_json}` : '');
     if (!imageUrl) {
       return res.status(502).json({ error: 'invalid_image_response', message: '이미지 응답이 비어 있어요.' });
     }

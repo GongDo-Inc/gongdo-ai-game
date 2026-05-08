@@ -26,7 +26,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { checkAndIncrement } from './_rateLimit.js';
 
-const MAX_BYTES = 100 * 1024; // 100KB
+const MAX_BYTES = 5 * 1024 * 1024; // 5MB — 1·2차시 마블이 AI 배경 이미지를 base64 로 박아서 보통 300KB~1MB
 
 function makePath(studentId, _title) {
   // Supabase Storage 키는 ASCII 만 안전. 한글 제목은 DB의 title 컬럼에만 보관.
@@ -82,6 +82,15 @@ export default async function handler(req, res) {
   const supabaseKey = process.env.SUPABASE_ANON_KEY;
   if (!supabaseUrl || !supabaseKey) {
     res.status(500).json({ error: 'Supabase 미설정' });
+    return;
+  }
+  // .env.example 의 placeholder (https://xxxxx.supabase.co / eyJ...xxxxx) 가 그대로 남아있으면
+  // undici 가 DNS 실패로 'fetch failed' 만 던져 진단이 어려움 — 명시적으로 거른다.
+  if (/x{5,}/i.test(supabaseUrl) || /x{20,}/i.test(supabaseKey)) {
+    res.status(500).json({
+      error: 'supabase_placeholder',
+      message: '.env.local 의 SUPABASE_URL / SUPABASE_ANON_KEY 가 placeholder 값입니다. Supabase Dashboard → Settings → API 에서 실제 값을 복사해 넣어주세요.',
+    });
     return;
   }
 
@@ -143,10 +152,21 @@ export default async function handler(req, res) {
       rateLimit: { used: rl.used, limit: rl.limit, resetInSec: rl.resetInSec },
     });
   } catch (err) {
-    console.error('[upload-game] 오류:', err?.message || err);
+    // undici 의 'fetch failed' 는 실제 원인이 err.cause 에 래핑됨 (ENOTFOUND/ECONNREFUSED/body too large 등)
+    console.error('[upload-game] Supabase 오류:', {
+      message: err?.message,
+      code: err?.code || err?.statusCode,
+      details: err?.details || err?.error,
+      hint: err?.hint,
+      causeMessage: err?.cause?.message,
+      causeCode: err?.cause?.code,
+      causeErrno: err?.cause?.errno,
+      sizeBytes,
+      storagePath,
+    });
     res.status(502).json({
       error: 'storage_error',
-      message: '게임을 올리지 못했어요. 다시 시도해볼까요?',
+      message: `게임을 올리지 못했어요 (${err?.message || '알 수 없는 오류'}). 다시 시도해볼까요?`,
     });
   }
 }
