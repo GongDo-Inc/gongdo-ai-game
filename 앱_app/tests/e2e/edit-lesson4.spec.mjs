@@ -102,3 +102,30 @@ test('발표 모달 — 클립보드 복사 안내 + 패들렛 링크 버튼', a
   const padletBtn = page.locator('#present-open-padlet');
   await expect(padletBtn).toBeVisible();
 });
+
+test('발표 자료 — 게임 생성 후 음악 적용만 하고 업로드해도 HTML 에 BGM 이 포함됨', async ({ page }) => {
+  await selectLesson(page, 4);
+  await clickStart(page);
+  await waitForGameIframe(page);
+
+  await page.locator('#btn-bgm').click();
+  await page.locator('#bgm-ai-input').fill('신나는 세계 여행 음악');
+  await page.locator('#bgm-ai-form').dispatchEvent('submit');
+  await expect(page.locator('#bgm-ai-status')).toContainText('자동으로 게임에 들어갔어요');
+
+  await page.evaluate(() => document.getElementById('btn-present').click());
+  await page.locator('#present-title-input').fill('음악 포함 게임');
+  await page.locator('#present-form button[type="submit"]').click();
+
+  const success = page.locator('#present-success');
+  await expect(success).toBeVisible({ timeout: 8000 });
+
+  const calls = getUploadCalls(page);
+  expect(calls.length).toBeGreaterThanOrEqual(1);
+  const last = calls[calls.length - 1];
+  expect(last.title).toBe('음악 포함 게임');
+  expect(last.html).toContain('__GONGDO_BGM_INJECTED__');
+  expect(last.html).toContain('__SCORE__');
+  expect(last.html).toContain('__gongdo-bgm-toggle');
+  expect(last.html).toContain('__syncBgmButton');
+});

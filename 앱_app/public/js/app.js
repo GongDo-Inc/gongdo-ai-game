@@ -1050,6 +1050,7 @@
   // 이 스크립트는 다운로드/공유된 standalone HTML 에서만 실제로 작동한다 (top===self 가드).
   function injectBgmIntoMarbleHtml(html, score) {
     if (!html || !score) return html;
+    if (html.includes('__GONGDO_BGM_INJECTED__')) return html;
     const safeScore = JSON.stringify({
       tempo: Number(score.tempo) || 120,
       melody: Array.isArray(score.melody) ? score.melody : [],
@@ -1061,29 +1062,97 @@
     const playerScript = `
 <script>
 (function(){
+  window.__GONGDO_BGM_INJECTED__ = true;
   var __SCORE__ = ${safeScore};
   var __bgmStarted = false;
+  var __bgmIsPlaying = false;
+  var __bgmToggleBtn = null;
+  var __bgmSynth = null;
+  var __bgmBass = null;
+  var __bgmDrum = null;
+  var __bgmParts = [];
+  function __syncBgmButton(){
+    if (!__bgmToggleBtn) return;
+    var playing = !!__bgmIsPlaying;
+    __bgmToggleBtn.textContent = playing ? '⏸ 음악 중지' : '🎵 음악 시작';
+    __bgmToggleBtn.setAttribute('aria-label', playing ? '배경음악 중지' : '배경음악 시작');
+    __bgmToggleBtn.dataset.state = playing ? 'playing' : 'stopped';
+  }
+  function __showBgmControls(){
+    try { if (window.top !== window.self) return; } catch(e) { return; }
+    if (__bgmToggleBtn || document.getElementById('__gongdo-bgm-toggle')) return;
+    var host = document.querySelector('.worksheet-topbar') || document.querySelector('.hud') || document.body;
+    var btn = document.createElement('button');
+    btn.id = '__gongdo-bgm-toggle';
+    btn.type = 'button';
+    btn.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 12px;border:2px solid #1A1A1A;border-radius:999px;background:#FFF8EC;color:#1A1A1A;font:800 13px/1 sans-serif;box-shadow:2px 2px 0 rgba(26,26,26,.18);cursor:pointer;white-space:nowrap';
+    btn.addEventListener('click', function(ev){
+      try { ev.preventDefault(); ev.stopPropagation(); } catch(e) {}
+      if (__bgmIsPlaying) __stopBgm();
+      else __startBgm();
+    });
+    if (host === document.body) {
+      btn.style.position = 'fixed';
+      btn.style.top = '16px';
+      btn.style.right = '16px';
+      btn.style.zIndex = '9999';
+    } else {
+      if (host.classList.contains('worksheet-topbar')) host.appendChild(btn);
+      else {
+        var spacer = host.querySelector('.hud-spacer');
+        if (spacer && spacer.parentNode === host) host.insertBefore(btn, spacer);
+        else host.appendChild(btn);
+      }
+    }
+    if (host === document.body) document.body.appendChild(btn);
+    __bgmToggleBtn = btn;
+    __syncBgmButton();
+  }
   function __startBgm(){
-    if (__bgmStarted) return;
     if (typeof Tone === 'undefined') return;
     try { if (window.top !== window.self) return; } catch(e) { return; }
+    if (__bgmStarted) {
+      try {
+        __bgmIsPlaying = true;
+        Tone.Transport.start('+0.05');
+        __syncBgmButton();
+      } catch(e) {}
+      return;
+    }
     __bgmStarted = true;
     Tone.start().then(function(){
       try {
         Tone.Transport.bpm.value = __SCORE__.tempo;
-        var synth = new Tone.PolySynth(Tone.Synth, { oscillator:{type:'square'}, envelope:{attack:0.01,decay:0.1,sustain:0.2,release:0.1}, volume:-14 }).toDestination();
-        var bass = new Tone.Synth({ oscillator:{type:'triangle'}, envelope:{attack:0.01,decay:0.2,sustain:0.3,release:0.2}, volume:-16 }).toDestination();
-        var drum = new Tone.NoiseSynth({ noise:{type:'white'}, envelope:{attack:0.001,decay:0.1,sustain:0}, volume:-22 }).toDestination();
-        if (__SCORE__.melody.length) new Tone.Part(function(t,v){try{synth.triggerAttackRelease(v.note,v.dur||'8n',t);}catch(e){}}, __SCORE__.melody).set({loop:true, loopEnd:'2m'}).start(0);
-        if (__SCORE__.bass.length) new Tone.Part(function(t,v){try{bass.triggerAttackRelease(v.note,v.dur||'2n',t);}catch(e){}}, __SCORE__.bass).set({loop:true, loopEnd:'2m'}).start(0);
-        if (__SCORE__.drums.length) new Tone.Part(function(t){try{drum.triggerAttackRelease('16n',t);}catch(e){}}, __SCORE__.drums).set({loop:true, loopEnd:'2m'}).start(0);
+        __bgmSynth = new Tone.PolySynth(Tone.Synth, { oscillator:{type:'square'}, envelope:{attack:0.01,decay:0.1,sustain:0.2,release:0.1}, volume:-14 }).toDestination();
+        __bgmBass = new Tone.Synth({ oscillator:{type:'triangle'}, envelope:{attack:0.01,decay:0.2,sustain:0.3,release:0.2}, volume:-16 }).toDestination();
+        __bgmDrum = new Tone.NoiseSynth({ noise:{type:'white'}, envelope:{attack:0.001,decay:0.1,sustain:0}, volume:-22 }).toDestination();
+        if (__SCORE__.melody.length) __bgmParts.push(new Tone.Part(function(t,v){try{__bgmSynth.triggerAttackRelease(v.note,v.dur||'8n',t);}catch(e){}}, __SCORE__.melody).set({loop:true, loopEnd:'2m'}));
+        if (__SCORE__.bass.length) __bgmParts.push(new Tone.Part(function(t,v){try{__bgmBass.triggerAttackRelease(v.note,v.dur||'2n',t);}catch(e){}}, __SCORE__.bass).set({loop:true, loopEnd:'2m'}));
+        if (__SCORE__.drums.length) __bgmParts.push(new Tone.Part(function(t){try{__bgmDrum.triggerAttackRelease('16n',t);}catch(e){}}, __SCORE__.drums).set({loop:true, loopEnd:'2m'}));
+        __bgmParts.forEach(function(part){ part.start(0); });
+        __bgmIsPlaying = true;
         Tone.Transport.start('+0.1');
+        __syncBgmButton();
       } catch(e){ console.warn('BGM 시작 실패:', e); }
     });
+  }
+  function __stopBgm(){
+    if (typeof Tone === 'undefined') return;
+    try {
+      __bgmIsPlaying = false;
+      Tone.Transport.stop();
+      Tone.Transport.position = 0;
+      __syncBgmButton();
+    } catch(e){}
   }
   window.addEventListener('click', __startBgm, { once: true });
   window.addEventListener('keydown', __startBgm, { once: true });
   window.addEventListener('touchstart', __startBgm, { once: true });
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', __showBgmControls, { once: true });
+  } else {
+    __showBgmControls();
+  }
 })();
 <\/script>`;
     if (html.includes('</head>')) {
@@ -1122,10 +1191,10 @@
         const useAiBoardColor = false;
         const useAiBackgroundImage = isPinLesson;
 
-        // BGM 적용 우선순위: ① 도구바 🎵 로 적용한 음악 → ② 문서 "### 음악" 프롬프트 (자동 생성)
-        // popover 적용이 있으면 그대로 사용, 없으면 문서 프롬프트로 /api/music 호출.
-        let musicScore = window.GongdoBGM?.getAppliedScore?.() || null;
-        const docMusicPrompt = !musicScore ? parseLessonMusicPrompt(editor.value) : '';
+        // BGM 적용 우선순위: ① 문서 "### 음악" 비-기본 프롬프트 → ② 도구바 🎵 적용 음악
+        // 학생이 문서를 직접 바꿨다면 그 의도를 최우선으로 본다.
+        const docMusicPrompt = parseLessonMusicPrompt(editor.value);
+        let musicScore = docMusicPrompt ? null : (window.GongdoBGM?.getAppliedScore?.() || null);
 
         // HTML 빌드와 음악 생성을 병렬로 (둘 다 ~3-10s 걸림)
         const [html, generatedScore] = await Promise.all([
@@ -1136,7 +1205,7 @@
 
         // 문서 프롬프트로 새로 생성된 score 가 있으면 HTML 에 BGM 스크립트 추가 주입 (다운로드 호환)
         let finalHtml = html;
-        if (!musicScore && generatedScore) {
+        if (generatedScore) {
           musicScore = generatedScore;
           finalHtml = injectBgmIntoMarbleHtml(html, generatedScore);
         }
@@ -1619,6 +1688,54 @@
     return { displayText, hint: hint || null };
   }
 
+  // hint 로 에디터 안에서 매칭 위치(=문자 인덱스)를 찾는 공통 헬퍼.
+  // findEditorLineByHint / highlightEditorByHint 가 동일한 후보 순서를 공유한다.
+  //
+  // 후보 순서 — 의미가 가장 명확한 것부터:
+  //   ① 섹션 헤딩 (### / ## / #)  ← 항상 줄 시작에 있어 false positive 가 거의 없음
+  //   ② 리스트 항목 (- ...)        ← hint 자체가 리스트 형식인 경우
+  //   ③ 평문 hint                  ← 위 둘이 다 미스인 경우의 마지막 수단
+  //
+  // 회귀 방어: 이전엔 ②가 ①보다 먼저라서, hint='플레이어 핀' 인 경우 lesson1.md 의
+  //   `- 플레이어 핀이 자동으로 칸 이동` (### 조작 방법 안 줄) 이 `### 플레이어 핀` 헤딩보다
+  //   먼저 매칭됐다. 헤딩을 앞세워 본래 의도된 섹션을 찾도록 한다.
+  function _findHintPos(value, hint) {
+    if (!value || !hint) return -1;
+    const cleaned = hint.replace(/[:：]\s*$/, '').trim();
+    const firstWord = cleaned.split(/\s+/)[0] || cleaned;
+    const candidates = [
+      // ① 섹션 헤딩 — 가장 의미가 명확, 항상 줄 시작
+      `### ${cleaned}`,
+      `## ${cleaned}`,
+      `# ${cleaned}`,
+      // ② 리스트 항목 (full hint 형태)
+      `- ${hint}`,
+      `- ${cleaned}`,
+      // ③ 평문 hint — 본문 어디든 매칭될 수 있어 위험
+      hint,
+      // ④ firstWord 폴백 (hint 가 "적 속도" 같이 두 단어인 경우 첫 단어로 폴백)
+      `### ${firstWord}`,
+      `## ${firstWord}`,
+      `- ${firstWord}:`,
+      `- ${firstWord}`,
+      // ⑤ 마지막 수단 — bare cleaned (예시문에도 걸릴 위험)
+      cleaned,
+    ];
+    let pos = -1;
+    for (const q of candidates) {
+      if (!q) continue;
+      pos = value.indexOf(q);
+      if (pos >= 0) return pos;
+    }
+    // fuzzy 폴백 — firstWord 가 markdown 토큰(### 등)이거나 너무 짧으면 skip
+    // (이전 버그: hint='### 도시 목록' 미매칭 → firstWord='###' → 첫 ### 헤딩에 잘못 떨어짐)
+    const looksLikeMarkdownToken = /^[#*\-_:]+$/.test(firstWord);
+    if (firstWord.length >= 2 && !looksLikeMarkdownToken) {
+      pos = value.toLowerCase().indexOf(firstWord.toLowerCase());
+    }
+    return pos;
+  }
+
   // 부수효과 없이 에디터 안에서 hint 위치를 찾아 line number 만 반환.
   // (focus 도둑 방지 — bot 응답 시 자동 호출되어 학생 타자가 엉뚱한 곳에 입력되는 버그 fix)
   function findEditorLineByHint(hint) {
@@ -1626,30 +1743,7 @@
     const editor = $('#editor-textarea');
     if (!editor || !editor.value) return null;
     const value = editor.value;
-    const cleaned = hint.replace(/[:：]\s*$/, '').trim();
-    const firstWord = cleaned.split(/\s+/)[0] || cleaned;
-    const candidates = [
-      `- ${hint}`, `- ${cleaned}`, hint,
-      `### ${cleaned}`, `## ${cleaned}`, `# ${cleaned}`,
-      `- ${firstWord}:`, `- ${firstWord}`,
-      `### ${firstWord}`, `## ${firstWord}`,
-      cleaned,
-    ];
-    let pos = -1;
-    for (const q of candidates) {
-      if (!q) continue;
-      pos = value.indexOf(q);
-      if (pos >= 0) break;
-    }
-    if (pos < 0) {
-      // fallback fuzzy 검색 — 단, firstWord 가 markdown 토큰(### 등)이거나 너무 짧으면
-      // false positive 방지 위해 skip (이전 버그: hint='### 도시 목록' 미매칭 → firstWord='###'
-      // → 첫 ### 헤딩(### 장르 line 21)에 잘못 떨어짐).
-      const looksLikeMarkdownToken = /^[#*\-_:]+$/.test(firstWord);
-      if (firstWord.length >= 2 && !looksLikeMarkdownToken) {
-        pos = value.toLowerCase().indexOf(firstWord.toLowerCase());
-      }
-    }
+    const pos = _findHintPos(value, hint);
     if (pos < 0) return null;
     const lineStart = value.lastIndexOf('\n', pos - 1) + 1;
     return value.slice(0, lineStart).split('\n').length;
@@ -1661,42 +1755,8 @@
     if (!editor || !editor.value) return null;
     const value = editor.value;
 
-    // 다단계 검색 — 구조 우선, 평문은 최후 수단
-    const cleaned = hint.replace(/[:：]\s*$/, '').trim();
-    const firstWord = cleaned.split(/\s+/)[0] || cleaned;
-    const candidates = [
-      // 1) 리스트 항목 (가장 구체적)
-      `- ${hint}`,             // "- 주인공:"
-      `- ${cleaned}`,          // "- 주인공"
-      // 2) 정확 콜론 형식
-      hint,                    // "주인공:"
-      // 3) 섹션 헤더
-      `### ${cleaned}`,        // "### 주인공"
-      `## ${cleaned}`,
-      `# ${cleaned}`,
-      // 4) 첫 단어 구조 폴백 (힌트가 "적 속도"인 경우)
-      `- ${firstWord}:`,
-      `- ${firstWord}`,
-      `### ${firstWord}`,
-      `## ${firstWord}`,
-      // 5) 평문 단어 (가장 위험 → 최후 수단)
-      cleaned,                 // "주인공"  ← 예시문에도 걸리므로 주의
-    ];
-
-    let pos = -1;
-    for (const q of candidates) {
-      if (!q) continue;
-      pos = value.indexOf(q);
-      if (pos >= 0) break;
-    }
-    // 마지막 수단: 대소문자 무시 첫 단어 부분 일치 — markdown 토큰/너무 짧은 단어는 skip
-    if (pos < 0) {
-      const looksLikeMarkdownToken = /^[#*\-_:]+$/.test(firstWord);
-      if (firstWord.length >= 2 && !looksLikeMarkdownToken) {
-        const lower = value.toLowerCase();
-        pos = lower.indexOf(firstWord.toLowerCase());
-      }
-    }
+    // findEditorLineByHint 와 동일한 후보 순서 공유 (헤딩 우선 — _findHintPos 참조)
+    const pos = _findHintPos(value, hint);
     if (pos < 0) return null;
 
     let lineStart = value.lastIndexOf('\n', pos - 1) + 1;
@@ -2521,6 +2581,7 @@
     // mirror div 의 word-break 미스매치보다 textarea native selection 이 더 신뢰성.
     // textarea ::selection 이 var(--color-yellow) 라 자동으로 베스트 케이스 색상.
     // 학생이 클릭하면 selection 사라지지만 mirror highlight 는 영구 유지 (이중 안내).
+    let lineNumber = null;
     const newM = editor.value.match(HERO_LINE_PATTERN);
     if (newM) {
       const start = newM.index;
@@ -2534,10 +2595,17 @@
       const lineHeight = parseFloat(getComputedStyle(editor).lineHeight) || 24;
       const targetTop = heroLineNum * lineHeight - editor.clientHeight / 3;
       editor.scrollTop = Math.max(0, targetTop);
+      lineNumber = editor.value.slice(0, start).split('\n').length;
     }
 
     // 시각 하이라이트 (영구 유지) — selection 사라진 후에도 mirror 가 노란 배경 유지
     highlightHeroLine(editor);
+
+    $('#game-status').textContent =
+      lineNumber
+        ? `🎉 주인공을 '${meta.name}'(으)로 바꿨어요! 📍 문서 ${lineNumber}번째 줄에 표시했어요. [시작]을 눌러봐요!`
+        : `🎉 주인공을 '${meta.name}'(으)로 바꿨어요! [시작]을 눌러봐요!`;
+    highlightStartButton('character');
   }
 
   // ─────────── Hero line 시각 하이라이트 (E-3) ───────────
@@ -2909,8 +2977,14 @@
 
   function _bindFeatureModal(featureKey) {
     const ids = _featureModalIds(featureKey);
-    const formId = featureKey === 'music' ? '#bgm-unlock-form' : '#variant-unlock-form';
-    const cancelId = featureKey === 'music' ? '#bgm-unlock-cancel' : '#variant-unlock-cancel';
+    const formId =
+      featureKey === 'music' ? '#bgm-unlock-form'
+      : featureKey === 'theme' ? '#theme-unlock-form'
+      : '#variant-unlock-form';
+    const cancelId =
+      featureKey === 'music' ? '#bgm-unlock-cancel'
+      : featureKey === 'theme' ? '#theme-unlock-cancel'
+      : '#variant-unlock-cancel';
 
     const form = $(formId);
     const input = $(ids.input);
@@ -3202,11 +3276,15 @@
       let uploadError = null;
       if (state.lastGeneratedHtml) {
         try {
+          const appliedScore = window.GongdoBGM?.getAppliedScore?.() || null;
+          const uploadHtml = appliedScore
+            ? injectBgmIntoMarbleHtml(state.lastGeneratedHtml, appliedScore)
+            : state.lastGeneratedHtml;
           const upRes = await fetch('/api/upload-game', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              html: state.lastGeneratedHtml,
+              html: uploadHtml,
               studentId: state.studentId,
               title: meta.title,
               tagline: meta.tagline,

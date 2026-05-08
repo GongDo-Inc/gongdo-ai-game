@@ -61,9 +61,12 @@ export default async function handler(req, res) {
     res.status(400).json({ error: '게임 HTML 이 비어있거나 형식이 잘못됐어요' });
     return;
   }
-  const sizeBytes = new TextEncoder().encode(html).length;
+  const htmlBytes = new TextEncoder().encode(html);
+  const sizeBytes = htmlBytes.length;
   if (sizeBytes > MAX_BYTES) {
-    res.status(413).json({ error: `게임 파일이 너무 커요 (${(sizeBytes / 1024).toFixed(1)}KB · 최대 100KB)` });
+    res.status(413).json({
+      error: `게임 파일이 너무 커요 (${(sizeBytes / 1024).toFixed(1)}KB · 최대 ${(MAX_BYTES / 1024 / 1024).toFixed(0)}MB)`,
+    });
     return;
   }
 
@@ -103,7 +106,7 @@ export default async function handler(req, res) {
   try {
     const { error: upErr } = await supabase.storage
       .from('student-games')
-      .upload(storagePath, html, {
+      .upload(storagePath, htmlBytes, {
         contentType: 'text/html',
         cacheControl: '3600',
         upsert: false,

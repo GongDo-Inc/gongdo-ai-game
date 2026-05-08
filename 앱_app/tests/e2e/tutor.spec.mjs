@@ -190,3 +190,87 @@ test('hint 가 마크다운 토큰만 (### 도시 목록 — lesson 1 에 없음
   // "21" 이 들어있으면 안 됨 (line 21 = ### 장르)
   expect(text).not.toContain('21');
 });
+
+test('1차시 — 평문 hint "플레이어 핀" → ### 플레이어 핀 헤딩 매칭 (### 조작 방법 안 줄 X)', async ({ page }) => {
+  // 회귀 방어: Claude 가 system prompt 지시를 어기고 평문 [HINT:플레이어 핀] 반환할 때
+  //   이전 버그: candidate `- 플레이어 핀` 이 `- 플레이어 핀이 자동으로 칸 이동` 줄 (### 조작 방법 안)
+  //               에 먼저 매칭됨
+  //   수정 후: 헤딩 후보 `### 플레이어 핀` 가 우선 → ### 플레이어 핀 섹션 헤딩에 매칭
+  await page.unroute('**/api/chat');
+  await page.route('**/api/chat', async (route) => {
+    const body = JSON.parse(route.request().postData() || '{}');
+    if (body.mode === 'tutor') {
+      // 의도적으로 평문 hint 반환 (실제 Claude 가 가끔 system prompt 어김)
+      return route.fulfill({
+        json: { rateLimit: { used: 1, limit: 100 }, reply: '핀 색깔을 바꿔봐요! [HINT:플레이어 핀]' },
+      });
+    }
+    return route.fulfill({ json: { rateLimit: { used: 1, limit: 100 }, html: '', htmlExtractStatus: 'ok' } });
+  });
+
+  await selectLesson(page, 1);
+
+  // ### 플레이어 핀 헤딩의 줄 번호 사전 계산
+  const headingLine = await page.evaluate(() => {
+    const v = document.getElementById('editor-textarea').value;
+    const idx = v.indexOf('### 플레이어 핀');
+    return idx >= 0 ? v.slice(0, idx).split('\n').length : null;
+  });
+  expect(headingLine).toBeGreaterThan(0);
+
+  // ### 조작 방법 안 `- 플레이어 핀이 자동으로 칸 이동` 줄 번호도 계산 (오매칭 방어용)
+  const operationLine = await page.evaluate(() => {
+    const v = document.getElementById('editor-textarea').value;
+    const idx = v.indexOf('- 플레이어 핀이 자동으로 칸 이동');
+    return idx >= 0 ? v.slice(0, idx).split('\n').length : null;
+  });
+  expect(operationLine).toBeGreaterThan(headingLine);   // 조작 방법은 핀 섹션보다 뒤
+
+  await askTutor(page, '플레이어 핀 어떻게 바꿔?');
+
+  const badgeLineNumber = await page.evaluate(() => {
+    const badges = document.querySelectorAll('.tutor-message-bot .tutor-hint-badge b');
+    return badges.length ? Number(badges[badges.length - 1].textContent) : null;
+  });
+
+  expect(badgeLineNumber).toBe(headingLine);
+  // 회귀 방어: 절대 ### 조작 방법 안 줄에 떨어지면 안 됨
+  expect(badgeLineNumber).not.toBe(operationLine);
+});
+
+test('2차시 — 평문 hint "플레이어 핀" → ### 플레이어 핀 헤딩 매칭 (lesson1 과 동일 회귀)', async ({ page }) => {
+  // lesson 2 도 ### 플레이어 핀 헤딩 + ### 조작 방법 안 `- 플레이어 핀이 자동으로...` 구조가 같다.
+  await page.unroute('**/api/chat');
+  await page.route('**/api/chat', async (route) => {
+    const body = JSON.parse(route.request().postData() || '{}');
+    if (body.mode === 'tutor') {
+      return route.fulfill({
+        json: { rateLimit: { used: 1, limit: 100 }, reply: '핀 색깔! [HINT:플레이어 핀]' },
+      });
+    }
+    return route.fulfill({ json: { rateLimit: { used: 1, limit: 100 }, html: '', htmlExtractStatus: 'ok' } });
+  });
+
+  await selectLesson(page, 2);
+
+  const headingLine = await page.evaluate(() => {
+    const v = document.getElementById('editor-textarea').value;
+    const idx = v.indexOf('### 플레이어 핀');
+    return idx >= 0 ? v.slice(0, idx).split('\n').length : null;
+  });
+  const operationLine = await page.evaluate(() => {
+    const v = document.getElementById('editor-textarea').value;
+    const idx = v.indexOf('- 플레이어 핀이 자동으로 칸 이동');
+    return idx >= 0 ? v.slice(0, idx).split('\n').length : null;
+  });
+
+  await askTutor(page, '플레이어 핀 어떻게?');
+
+  const badgeLineNumber = await page.evaluate(() => {
+    const badges = document.querySelectorAll('.tutor-message-bot .tutor-hint-badge b');
+    return badges.length ? Number(badges[badges.length - 1].textContent) : null;
+  });
+
+  expect(badgeLineNumber).toBe(headingLine);
+  expect(badgeLineNumber).not.toBe(operationLine);
+});

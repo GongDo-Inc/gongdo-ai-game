@@ -43,6 +43,30 @@ test('lesson 2 — ### 음악 doc 프롬프트 → 자동 generateAndApply 호�
   expect(typeof score.tempo).toBe('number');
 });
 
+test('lesson 2 — 도구바에 적용된 이전 음악이 있어도 문서 ### 음악 변경이 우선 반영됨', async ({ page }) => {
+  await page.goto('/');
+  await selectLesson(page, 2);
+
+  await page.locator('#btn-bgm').click();
+  await page.locator('#bgm-ai-input').fill('이전 도구바 음악');
+  await page.locator('#btn-bgm-generate').click();
+  await expect.poll(async () => {
+    return page.evaluate(() => window.GongdoBGM?.state?.appliedToGame?.mood || null);
+  }).toBeTruthy();
+
+  await page.evaluate(() => {
+    const el = document.getElementById('editor-textarea');
+    el.value = el.value.replace('- 기본 음악', '- 즐겁고 산뜻한 피크닉 좀 다른 음악');
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+
+  await clickStart(page);
+  await waitForGameIframe(page);
+
+  const appliedMood = await page.evaluate(() => window.GongdoBGM?.state?.appliedToGame?.mood || null);
+  expect(appliedMood).toBe('즐겁고 산뜻한 피크닉 좀 다른 음악');
+});
+
 test('lesson 2 — 마블 HTML 에 BGM 스크립트(Tone.js + player) 주입', async ({ page }) => {
   await page.goto('/');
   await selectLesson(page, 2);

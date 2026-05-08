@@ -88,6 +88,7 @@ export default async function handler(req, res) {
       [
         "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob:",
         "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
+        "worker-src 'self' blob:",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com data:",
         "img-src 'self' https: data: blob:",
