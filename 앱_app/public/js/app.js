@@ -167,7 +167,7 @@
       fileBtn.tabIndex = 0;
       fileBtn.dataset.lesson = lesson.no;
       if (isDisabled) fileBtn.setAttribute('aria-disabled', 'true');
-      fileBtn.innerHTML = `<span aria-hidden="true">📄</span> ${lesson.title} 문서`;
+      fileBtn.innerHTML = `<span aria-hidden="true">📄</span> ${lesson.document_label || `${lesson.title} 문서`}`;
       fileBtn.addEventListener('click', () => {
         if (isDisabled) { showCharacterToast('3,4교시에 만나요'); return; }
         selectLesson(lesson.no);
@@ -609,6 +609,9 @@
         pinColorMatched: !!player.colorMatched,
       }));
     }
+    if (Number(lessonNo) === 3) {
+      return parseLesson3Players(text);
+    }
     const hero = parseHeroLine(text) || { name: '데니스', imageUrl: MARBLE_IP_META['데니스'].imageUrl, emoji: '👦', id: 'dennis' };
     const opponent = parseOpponentLine(text);
     const aiName = hero.name === '데니스' ? '슬기' : '데니스';
@@ -619,6 +622,59 @@
         ? { ...opponent, isHuman: false }
         : { name: aiName, imageUrl: aiMeta.imageUrl, emoji: aiMeta.emoji, id: aiMeta.id, isHuman: false },
     ];
+  }
+
+  // 3차시 ### 플레이어 핀 섹션 파서.
+  // 값이 "빨간 핀" / "파란 핀" 처럼 색+핀 → 핀 토큰 모드
+  // 값이 "데니스" / "슬기" 등 MARBLE_IP_META 키 → 캐릭터 이미지 모드
+  // 두 모드 혼합 입력도 허용 (학생이 한 명만 캐릭터로 바꿔도 OK).
+  function parseLesson3Players(text) {
+    const block = sectionBlock(text, '플레이어 핀');
+    const fallback = [
+      { roleKey: '주인공', value: '빨간 핀', isHuman: true,  id: 'player-human' },
+      { roleKey: 'AI친구', value: '파란 핀', isHuman: false, id: 'player-ai'    },
+    ];
+    const lines = (block || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => /^-\s+/.test(line));
+    const parsed = lines.map((line, index) => {
+      const match = line.match(/^-\s*\*{0,2}([^:*]+?)\*{0,2}\s*:\s*(.+)$/);
+      if (!match) return null;
+      const roleKey = match[1].trim();
+      const value = match[2].trim();
+      const base = fallback[index] || fallback[fallback.length - 1];
+      return { roleKey: roleKey || base.roleKey, value, isHuman: index === 0, id: base.id };
+    }).filter(Boolean);
+    const rows = parsed.length ? parsed.slice(0, 2) : fallback;
+    // 행이 1개만 들어왔다면 누락된 행은 fallback 으로 보충
+    while (rows.length < 2) rows.push(fallback[rows.length]);
+    return rows.map((row, index) => {
+      const charMeta = MARBLE_IP_META[row.value];
+      if (charMeta) {
+        // 캐릭터 모드 — 이름은 캐릭터 이름으로 표시
+        return {
+          name: row.value,
+          imageUrl: charMeta.imageUrl,
+          emoji: charMeta.emoji,
+          id: charMeta.id,
+          isHuman: row.isHuman,
+        };
+      }
+      // 핀 모드 — 색상 텍스트(예: "빨간 핀")에서 색을 뽑고, 표시 이름은 roleKey(주인공/AI친구).
+      const colorText = row.value.replace(/핀/g, '').trim();
+      const matchedColor = resolveNamedColorOrNull(colorText);
+      const fallbackColor = index === 0 ? '#E63946' : '#3D7BA3';
+      return {
+        name: row.roleKey,
+        imageUrl: '',
+        emoji: '📍',
+        id: row.id,
+        isHuman: row.isHuman,
+        pinColor: matchedColor || fallbackColor,
+        pinColorMatched: !!matchedColor,
+      };
+    });
   }
 
   function parseAbilities(text, players) {
@@ -796,6 +852,39 @@
     return '';
   }
 
+  // 3차시 시작 금액 파서.
+  // v1.4.1+ 표준 위치: ### 규칙 섹션 안의
+  //   - 주인공 : 30,000골드
+  //   - AI친구 : 30,000골드
+  // 호환: 별도 ### 시작 금액 / ### 시작 머니 / ### 시작 골드 섹션도 인식.
+  // 키 매칭은 부분일치 — "주인공", "AI", "AI친구", "친구" 등을 관대하게 인식.
+  function parseLesson3StartGold(text) {
+    // 우선순위: ### 규칙 → ### 시작 금액/머니/골드 (별도 섹션)
+    const blocks = [
+      sectionBlock(text, '규칙'),
+      sectionBlock(text, '시작 금액'),
+      sectionBlock(text, '시작 머니'),
+      sectionBlock(text, '시작 골드'),
+    ].filter(Boolean);
+    let hero = null;
+    let ai = null;
+    blocks.forEach((block) => {
+      block.split('\n').forEach((rawLine) => {
+        const line = rawLine.trim();
+        if (!/^-\s+/.test(line)) return;
+        const m = line.match(/^-\s*\*{0,2}([^:*]+?)\*{0,2}\s*:\s*([\d,]+)/);
+        if (!m) return;
+        const key = m[1].trim();
+        const amount = numberFromText(m[2], 0);
+        if (!amount) return;
+        // ### 규칙 안의 다른 라인(예: "출발 칸 통과: +2000골드") 와 충돌 방지 — 키 자체에 주인공/AI/친구 포함된 줄만 인식
+        if (/주인공/.test(key) && hero == null) hero = amount;
+        else if (/AI|친구/.test(key) && ai == null) ai = amount;
+      });
+    });
+    return { hero, ai };
+  }
+
   function parseMarbleRules(text) {
     const ruleText = sectionBlock(text, '규칙');
     const salaryMatch = ruleText.match(/출발.*?\+([\d,]+)골드/);
@@ -843,18 +932,38 @@
         const r = parseMarbleRules(text);
         // 3차시는 학생이 도시를 실제로 살 수 있도록 시작 머니를 30,000 으로 (기본 10,000)
         if (Number(lessonNo) === 3) r.startGold = 30000;
+        // 3차시 ### 시작 금액 섹션 — 주인공 값을 글로벌 startGold 로, AI친구 값은 player.startGold 로 player 객체에 주입
+        if (Number(lessonNo) === 3) {
+          const lesson3StartGold = parseLesson3StartGold(text);
+          if (lesson3StartGold.hero != null) r.startGold = lesson3StartGold.hero;
+          // 학생이 AI친구에게만 다른 시작 금액을 적은 경우 → 두 번째 player.startGold 로 보존
+          // (parseMarbleLessonConfig 의 players 분기 밖이므로 closure 변수에 stash)
+          parseMarbleLessonConfig._pendingAiStartGold = lesson3StartGold.ai;
+          parseMarbleLessonConfig._pendingHeroStartGold = lesson3StartGold.hero;
+        } else {
+          parseMarbleLessonConfig._pendingAiStartGold = null;
+          parseMarbleLessonConfig._pendingHeroStartGold = null;
+        }
         return r;
       })(),
       cities: isLessonOne ? [] : parseCities(text),
       lessonOneCells: usesCellList ? parseLessonOneCells(text, cellCount) : [],
-      players,
+      players: (Number(lessonNo) === 3
+        ? players.map((p, idx) => {
+            const heroGold = parseMarbleLessonConfig._pendingHeroStartGold;
+            const aiGold = parseMarbleLessonConfig._pendingAiStartGold;
+            const startGold = idx === 0 ? heroGold : aiGold;
+            return startGold != null ? { ...p, startGold } : p;
+          })
+        : players),
       bgm: { kind: 'off' },
       dice: lessonOneDice || { label: '기본 주사위', emoji: '🎲', theme: 'classic' },
       ui: {
         hideHud: isPinLesson,
         hideTokens: false,
         showCoordinates: isPinLesson,
-        usePinTokens: isPinLesson,
+        // 3차시는 모든 플레이어가 핀 모드일 때만 핀 토큰 사용 (캐릭터 모드면 캐릭터 이미지)
+        usePinTokens: isPinLesson || (Number(lessonNo) === 3 && players.every((p) => p.pinColor && !p.imageUrl)),
         simpleBoard: isLessonOne,
         disableCellEffects: isLessonOne,
         disableWin: isLessonOne,
@@ -2381,12 +2490,15 @@
     seulgi: { name: '슬기',   url: `${IP_ASSET_BASE}/archive/seulgi.png` },
     dennis: { name: '데니스', url: `${IP_ASSET_BASE}/archive/dennis.png` },
   };
-  // 정규식: lesson1·2·1_catch·1_jump 모두 매치
+  // 정규식: lesson1·2·1_catch·1_jump + 3차시 ### 플레이어 핀 형식 모두 매치
   //   lesson1:        `- 주인공: 파란 우주선`
   //   lesson1_catch:  `- 주인공: ㅋㅋ`
   //   lesson2:        `- 주인공: 토리`
-  // 그룹: $1=prefix("- 주인공: "), $2=기존 이름, $3=옵션(이전 patch 의 (이미지: ...) — 누적 방지)
-  const HERO_LINE_PATTERN = /^(- 주인공:\s*)([^\n(]*?)(\s*\(이미지:[^)]*\))?\s*$/m;
+  //   lesson3 (v1.4.1+): `- **주인공** : 빨간 핀`  (bold + 콜론 앞 공백)
+  // 그룹: $1=prefix(`- ` ~ `:` ~ 공백), $2=기존 이름, $3=옵션(이전 patch 의 (이미지: ...) — 누적 방지)
+  const HERO_LINE_PATTERN = /^(-\s*\*{0,2}주인공\*{0,2}\s*:\s*)([^\n(]*?)(\s*\(이미지:[^)]*\))?\s*$/m;
+  // 3차시 AI친구 라인 — 주인공 변경 시 반대 캐릭터로 자동 동기화 (mixed 모드 회피)
+  const AI_LINE_PATTERN = /^(-\s*\*{0,2}AI친구\*{0,2}\s*:\s*)([^\n(]*?)(\s*\(이미지:[^)]*\))?\s*$/m;
 
   // ── in-memory 영속성 (대표 2차 결정 🅱️) ──
   let _characterUnlocked = true;
@@ -2573,9 +2685,23 @@
       return;
     }
 
+    // 3차시 ### 플레이어 핀 형식("- **주인공** : ...") 인지 판별.
+    // bold 마커가 있으면 이미지 URL 을 붙이지 않음 (parseLesson3Players 가 MARBLE_IP_META 로 자동 매칭).
+    const isPinFormat = /^-\s*\*\*주인공\*\*\s*:/m.test(before);
+
     // $1=prefix, $2=name(원본 무시 후 새 이름), $3=옵션(있으면 덮어쓰기) 자리 모두 새 텍스트로
-    const replacement = `$1${meta.name} (이미지: ${meta.url})`;
-    editor.value = before.replace(HERO_LINE_PATTERN, replacement);
+    const heroReplacement = isPinFormat
+      ? `$1${meta.name}`
+      : `$1${meta.name} (이미지: ${meta.url})`;
+    let next = before.replace(HERO_LINE_PATTERN, heroReplacement);
+
+    // 3차시: AI친구 라인도 반대 캐릭터로 동기화 (혼합 모드 방지 — 주인공만 바꾸면
+    // AI친구가 "파란 핀" 으로 남아 한쪽은 캐릭터·한쪽은 핀 이 되는 어색한 상태가 됨).
+    if (isPinFormat && AI_LINE_PATTERN.test(next)) {
+      const opposite = charKey === 'dennis' ? IP_META.seulgi : IP_META.dennis;
+      next = next.replace(AI_LINE_PATTERN, `$1${opposite.name}`);
+    }
+    editor.value = next;
 
     // ── caret + selection 으로 hero line 강조 + textarea native 자동 스크롤 ──
     // mirror div 의 word-break 미스매치보다 textarea native selection 이 더 신뢰성.

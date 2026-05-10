@@ -34,14 +34,20 @@ test('3차시 — 도구바 캐릭터 선택으로 문서와 게임 주인공이
   await expect(page.locator('#character-popover')).toBeVisible();
   await page.locator('.character-card[data-char="seulgi"]').click();
 
+  // v1.4.1+ ### 플레이어 핀 형식 — bold 마커 유지, 이미지 URL 없음
+  // 추가로 AI친구 라인은 반대 캐릭터(데니스)로 자동 동기화
   const editorValue = await getEditorValue(page);
-  expect(editorValue).toContain('- 주인공: 슬기 (이미지:');
+  expect(editorValue).toContain('- **주인공** : 슬기');
+  expect(editorValue).toContain('- **AI친구** : 데니스');
+  // 데이터 라인(`-`로 시작)에는 핀 텍스트가 남아있지 않아야 함 (안내 인용문은 OK)
+  expect(editorValue).not.toMatch(/^-\s*\*\*(?:주인공|AI친구)\*\*\s*:\s*[빨파]란 핀/m);
   await expect(page.locator('#start-attention-dot')).toBeVisible();
 
   await clickStart(page);
   const frame = await waitForGameIframe(page);
   const players = await frame.evaluate(() => window.__GONGDO_MARBLE_CONFIG__.players);
   expect(players[0].id).toBe('seulgi');
+  expect(players[1].id).toBe('dennis');
 });
 
 test('2차시 — 도구바 배경 선택으로 문서 프롬프트와 게임 배경이 함께 바뀜', async ({ page }) => {

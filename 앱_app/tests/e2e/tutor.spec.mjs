@@ -87,17 +87,18 @@ test('2차시 — 도시 6개 채우고 AI 튜터 5회 질문 → 도시 목록 
 test('3차시 — 주인공/도시 수정 후 AI 튜터 5회 질문 → 모두 보존', async ({ page }) => {
   await selectLesson(page, 3);
 
-  await replaceEditorLine(page, '- 주인공: 데니스', '- 주인공: 슬기');
+  // v1.4.1+ ### 플레이어 핀 형식: `- **주인공** : 빨간 핀` → 슬기로 교체
+  await replaceEditorLine(page, '- **주인공** : 빨간 핀', '- **주인공** : 슬기');
   await replaceEditorLine(page, '- 1칸 : 대한민국 서울: 경복궁 / 5000골드', '- 1칸 : 대한민국 서울: 경복궁 / 9999골드');
 
   const before = await getEditorValue(page);
-  expect(before).toContain('주인공: 슬기');
+  expect(before).toContain('**주인공** : 슬기');
   expect(before).toContain('9999골드');
 
   for (const q of QUESTIONS) {
     await askTutor(page, q);
     const v = await getEditorValue(page);
-    expect(v).toContain('주인공: 슬기');
+    expect(v).toContain('**주인공** : 슬기');
     expect(v).toContain('9999골드');
   }
 
