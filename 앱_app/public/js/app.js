@@ -650,11 +650,14 @@
     // 행이 1개만 들어왔다면 누락된 행은 fallback 으로 보충
     while (rows.length < 2) rows.push(fallback[rows.length]);
     return rows.map((row, index) => {
-      const charMeta = MARBLE_IP_META[row.value];
+      // "데니스" / "슬기" 직접 입력 + "데니스 핀" / "슬기 핀" 처럼 "핀" 단어를 남긴 자연 입력 모두 캐릭터로 인식.
+      // (lesson3.md 안내문은 "빨간 핀 → 데니스" 로 핀 단어를 떼라고 하지만, 학생이 색만 바꾸는 경우가 더 흔함)
+      const valueNoPin = row.value.replace(/\s*핀\s*$/, '').trim();
+      const charMeta = MARBLE_IP_META[row.value] || MARBLE_IP_META[valueNoPin];
       if (charMeta) {
         // 캐릭터 모드 — 이름은 캐릭터 이름으로 표시
         return {
-          name: row.value,
+          name: MARBLE_IP_META[row.value] ? row.value : valueNoPin,
           imageUrl: charMeta.imageUrl,
           emoji: charMeta.emoji,
           id: charMeta.id,
@@ -1835,6 +1838,27 @@
       if (!q) continue;
       pos = value.indexOf(q);
       if (pos >= 0) return pos;
+    }
+    // bold 마커 폴백 — 3차시 lesson3.md 의 `- **주인공** : 빨간 핀` 처럼
+    // 학생 문서가 bold(`**`) 와 콜론 주변 공백을 갖는 경우, 위 후보들이 모두 미스함.
+    // value 에서 `**` 를 떼고 같은 후보를 한번 더 시도, 매칭되면 원본 인덱스로 매핑.
+    const valueNoBold = value.replace(/\*\*/g, '');
+    if (valueNoBold !== value) {
+      for (const q of candidates) {
+        if (!q) continue;
+        const posNoBold = valueNoBold.indexOf(q);
+        if (posNoBold < 0) continue;
+        // 원본 위치로 매핑: value 를 walk 하면서 `**` 는 건너뜀
+        let orig = 0; let norm = 0;
+        while (norm < posNoBold && orig < value.length) {
+          if (value.charCodeAt(orig) === 42 && value.charCodeAt(orig + 1) === 42) {
+            orig += 2;
+          } else {
+            orig += 1; norm += 1;
+          }
+        }
+        return orig;
+      }
     }
     // fuzzy 폴백 — firstWord 가 markdown 토큰(### 등)이거나 너무 짧으면 skip
     // (이전 버그: hint='### 도시 목록' 미매칭 → firstWord='###' → 첫 ### 헤딩에 잘못 떨어짐)
@@ -3368,7 +3392,8 @@
       successPanel.hidden = true;
       populateAutoList();
       modal.hidden = false;
-      setTimeout(() => $('#present-title-input')?.focus(), 50);
+      // 동기 focus — setTimeout(50) 은 e2e 풀스위트에서 타이핑 race 유발 (BUNKER e2e flaky 회귀)
+      $('#present-title-input')?.focus();
     };
     const close = () => {
       modal.hidden = true;
@@ -3752,6 +3777,9 @@
       parseBoardCellCount, parseBoardImage, parseLessonOneCells,
       parseHeroLine, parseOpponentLine, parsePlayers, parseAbilities,
       parseMarbleRules, parseMarbleLessonConfig, parseCities,
+      parseLesson3Players, parseLesson3StartGold,
+      // tutor hint matcher (bold/spacing tolerant)
+      _findHintPos,
       // constants
       SIMPLE_COLOR_MAP, LESSON_INHERIT_SECTIONS, MARBLE_IP_META,
     });

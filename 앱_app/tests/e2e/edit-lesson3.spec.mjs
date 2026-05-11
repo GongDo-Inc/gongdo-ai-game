@@ -295,3 +295,20 @@ test('화투패 🎴 가 게임 화면 어디에도 노출되지 않음 (CONFIG/
   expect(modalCheck.emoji).not.toBe('🎴');
   expect(modalCheck.type).toContain('황금카드');
 });
+
+test('주인공: "데니스 핀" / AI친구: "슬기 핀" → 캐릭터 모드 (학생 자연 입력 회귀 방어)', async ({ page }) => {
+  // 학생이 안내문("빨간 핀 → 데니스") 을 따르지 않고 색만 바꾸는 자연스러운 입력.
+  // v1.4.1: parseLesson3Players 가 "{캐릭터} 핀" 도 캐릭터 모드로 인식해야 함.
+  await replaceEditorLine(page, '- **주인공** : 빨간 핀', '- **주인공** : 데니스 핀');
+  await replaceEditorLine(page, '- **AI친구** : 파란 핀', '- **AI친구** : 슬기 핀');
+  await clickStart(page);
+  const frame = await waitForGameIframe(page);
+  const config = await frame.evaluate(() => window.__GONGDO_MARBLE_CONFIG__);
+  expect(config.players[0].id).toBe('dennis');
+  expect(config.players[0].name).toBe('데니스');
+  expect(config.players[0].imageUrl).toMatch(/dennis\.png/);
+  expect(config.players[1].id).toBe('seulgi');
+  expect(config.players[1].name).toBe('슬기');
+  expect(config.players[1].imageUrl).toMatch(/seulgi\.png/);
+  expect(config.ui.usePinTokens).toBe(false);
+});

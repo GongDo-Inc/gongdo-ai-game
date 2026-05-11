@@ -202,3 +202,73 @@ test('numberFromText — 빈/잘못된 입력 → fallback', () => {
 test('numberFromText — 음수 처리', () => {
   assert.equal(H.numberFromText('-1000', 0), -1000);
 });
+
+// ─────────── parseLesson3Players (회귀: "슬기 핀" / "데니스 핀" 형식 캐릭터 인식) ───────────
+
+const L3_PLAYER_BLOCK = (heroValue, aiValue) => `### 플레이어 핀\n- **주인공** : ${heroValue}\n- **AI친구** : ${aiValue}${END}`;
+
+test('parseLesson3Players — 기본(빨간 핀/파란 핀) → 핀 모드', () => {
+  const players = H.parseLesson3Players(L3_PLAYER_BLOCK('빨간 핀', '파란 핀'));
+  assert.equal(players[0].pinColor, '#E63946');
+  assert.equal(players[0].imageUrl, '');
+  assert.equal(players[1].pinColor, '#3D7BA3');
+});
+
+test('parseLesson3Players — "데니스" 단독 → 캐릭터 모드 (기존 동작 유지)', () => {
+  const players = H.parseLesson3Players(L3_PLAYER_BLOCK('데니스', '슬기'));
+  assert.equal(players[0].name, '데니스');
+  assert.match(players[0].imageUrl, /dennis\.png$/);
+  assert.equal(players[1].name, '슬기');
+  assert.match(players[1].imageUrl, /seulgi\.png$/);
+});
+
+test('parseLesson3Players — "데니스 핀" / "슬기 핀" → 캐릭터 모드 (회귀 방어)', () => {
+  // 학생이 "빨간 핀" 에서 색만 바꿔 "데니스 핀" 으로 입력하는 자연스러운 패턴.
+  const players = H.parseLesson3Players(L3_PLAYER_BLOCK('데니스 핀', '슬기 핀'));
+  assert.equal(players[0].name, '데니스');
+  assert.match(players[0].imageUrl, /dennis\.png$/, '주인공 = 데니스 캐릭터 이미지');
+  assert.equal(players[1].name, '슬기');
+  assert.match(players[1].imageUrl, /seulgi\.png$/, 'AI친구 = 슬기 캐릭터 이미지');
+});
+
+test('parseLesson3Players — 혼합 ("데니스 핀" / "파란 핀") → 1명만 캐릭터', () => {
+  const players = H.parseLesson3Players(L3_PLAYER_BLOCK('데니스 핀', '파란 핀'));
+  assert.match(players[0].imageUrl, /dennis\.png$/);
+  assert.equal(players[1].imageUrl, '');
+  assert.equal(players[1].pinColor, '#3D7BA3');
+});
+
+// ─────────── _findHintPos (회귀: 3차시 bold list-item 매칭) ───────────
+
+const L3_DOC = `### 플레이어 핀\n- **주인공** : 빨간 핀\n- **AI친구** : 파란 핀\n\n### 주사위\n- 기본 주사위\n${END}`;
+
+test('_findHintPos — bold + 콜론 공백 줄에 [HINT:- 주인공:] 매칭 (회귀 방어)', () => {
+  // AI 튜터가 시스템 프롬프트 예시 그대로 [HINT:- 주인공:] 를 보낼 때
+  // lesson3.md 의 `- **주인공** : 빨간 핀` 줄을 찾아야 함.
+  const pos = H._findHintPos(L3_DOC, '- 주인공:');
+  assert.ok(pos >= 0, '매칭 실패 — bold tolerant 폴백이 동작해야 함');
+  const lineIdx = L3_DOC.slice(0, pos).split('\n').length;
+  assert.equal(lineIdx, 2, '"- **주인공** : ..." 줄(line 2) 에 매칭되어야 함');
+});
+
+test('_findHintPos — [HINT:주인공:] (대시 없음) 도 bold 줄에 매칭', () => {
+  const pos = H._findHintPos(L3_DOC, '주인공:');
+  assert.ok(pos >= 0);
+  const lineIdx = L3_DOC.slice(0, pos).split('\n').length;
+  assert.equal(lineIdx, 2);
+});
+
+test('_findHintPos — [HINT:### 플레이어 핀] 헤딩 직접 매칭 (기존 경로 유지)', () => {
+  const pos = H._findHintPos(L3_DOC, '### 플레이어 핀');
+  assert.ok(pos >= 0);
+  const lineIdx = L3_DOC.slice(0, pos).split('\n').length;
+  assert.equal(lineIdx, 1);
+});
+
+test('_findHintPos — bold 없는 1차시 형식 줄에도 그대로 매칭 (퇴행 없음)', () => {
+  const lesson1Doc = `### 플레이어 핀\n- 주인공: 빨간 핀\n- 적: 파란 핀${END}`;
+  const pos = H._findHintPos(lesson1Doc, '- 주인공:');
+  assert.ok(pos >= 0);
+  const lineIdx = lesson1Doc.slice(0, pos).split('\n').length;
+  assert.equal(lineIdx, 2);
+});
