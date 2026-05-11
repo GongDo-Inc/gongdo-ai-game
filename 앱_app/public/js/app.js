@@ -914,7 +914,7 @@
   }
 
   function parseMarbleLessonConfig(text, lessonNo) {
-    const title = (text.match(/^#\s+(.+)$/m) || [])[1] || '부루마블';
+    const title = (text.match(/^#\s+(.+)$/m) || [])[1] || '주사위게임';
     const basePlayers = parsePlayers(text, lessonNo);
     const players = parseAbilities(text, basePlayers);
     const cellCount = parseBoardCellCount(text);
@@ -1101,7 +1101,7 @@
 
   async function buildPatchedMarbleHtml(sourceText, lessonNo, options = {}) {
     const res = await fetch(MARBLE_TEMPLATE_PATH, { cache: 'no-store' });
-    if (!res.ok) throw new Error('부루마블 템플릿 로딩 실패');
+    if (!res.ok) throw new Error('주사위게임 템플릿 로딩 실패');
     const template = await res.text();
     const config = parseMarbleLessonConfig(sourceText, lessonNo);
 
@@ -1173,6 +1173,8 @@
     const toneScript = '<script src="https://cdn.jsdelivr.net/npm/tone@15.0.4/build/Tone.js"><\/script>';
     const playerScript = `
 <script>
+// 📝 "### 음악" → 학생이 적은 분위기(우주 전투/조용한 카페/추격 음악 등)로 만든 배경음악이
+//    여기서 게임 화면 동안 계속 흘러나와요. 🎵
 (function(){
   window.__GONGDO_BGM_INJECTED__ = true;
   var __SCORE__ = ${safeScore};
@@ -1339,10 +1341,10 @@
         if (musicScore) {
           try { window.GongdoBGM.playAppliedIfAny(); } catch {}
         }
-        $('#game-status').textContent = `🎲 ${state.currentLesson}차시 부루마블을 기존 코드 기반으로 업데이트했어요!`;
+        $('#game-status').textContent = `🎲 ${state.currentLesson}차시 주사위게임을 기존 코드 기반으로 업데이트했어요!`;
       } catch (err) {
         console.error(err);
-        $('#game-status').textContent = `⚠️ ${err?.message || '부루마블 템플릿을 업데이트하지 못했어요.'}`;
+        $('#game-status').textContent = `⚠️ ${err?.message || '주사위게임 템플릿을 업데이트하지 못했어요.'}`;
       } finally {
         hideGeneratingModal();
       }
@@ -2198,19 +2200,27 @@
     return keywords;
   }
 
+  // 학생 친화 주석 표지 — 코드 안에 섹션 키워드를 달아주는 라벨로 쓰임.
+  // 기존 📝 외에 데모/Claude 가 자유롭게 쓰는 라벨 이모지도 포괄해서 매칭 실패율을 낮춤.
+  const SECTION_COMMENT_EMOJI_RE = '(?:📝|🌟|🎯|🎮|🦸|🎲|🎨|🪙|🎵|🏝️|🔑|💡|🚀|✨|🗺️|👤)';
+  // JS 라인 주석(//) + HTML 주석(<!-- -->) 둘 다 인식
+  const SECTION_COMMENT_PREFIX_RE = '(?://|<!--)\\s*' + SECTION_COMMENT_EMOJI_RE;
+  // 다음 주석 시작점도 동일 prefix 로 인식해서 하이라이트 범위를 끊음
+  const SECTION_COMMENT_NEXT_RE = new RegExp('(?://|<!--)\\s*' + SECTION_COMMENT_EMOJI_RE);
+
   function findCodeRange(rawCode, keywords) {
     if (!rawCode || !keywords?.length) return null;
     const lines = rawCode.split('\n');
     for (const kw of keywords) {
       if (!kw) continue;
-      const re = new RegExp('//\\s*📝[^\n]*' + escapeRegex(kw));
+      const re = new RegExp(SECTION_COMMENT_PREFIX_RE + '[^\n]*' + escapeRegex(kw));
       for (let i = 0; i < lines.length; i++) {
         if (re.test(lines[i])) {
-          // 다음 빈 줄 또는 다음 // 📝 까지 (단, 다음 // 📝 시작 직전까지)
+          // 다음 빈 줄 또는 다음 섹션 주석까지 (단, 다음 섹션 주석 시작 직전까지)
           let end = i + 1;
           while (end < lines.length) {
             const t = lines[end].trim();
-            if (/\/\/\s*📝/.test(t)) break;
+            if (SECTION_COMMENT_NEXT_RE.test(t)) break;
             if (t === '' && end > i + 1) break;
             end++;
           }
@@ -2539,7 +2549,7 @@
     const charIcon = btn ? btn.querySelector('.character-icon') : null;
     if (!btn) return;
 
-    // 1차시 (부루마블): 자체 `**내 캐릭터**:` 마크다운 메커니즘 사용
+    // 1차시 (주사위게임): 자체 `**내 캐릭터**:` 마크다운 메커니즘 사용
     // → IP 캐릭터 버튼은 보이되 "잠김" 상태로 표시 (클릭 시 알럿 방지)
     const wrapper = $('#btn-character-wrapper');
     if (Number(state.currentLesson) === 1) {
@@ -2967,7 +2977,7 @@
   }
 
   function refreshFeatureGateButtons() {
-    // 1차시 (부루마블): BGM과 배경은 마크다운에서 직접 설정하므로 도구바 버튼 숨김
+    // 1차시 (주사위게임): BGM과 배경은 마크다운에서 직접 설정하므로 도구바 버튼 숨김
     const isBluemarbleLesson = Number(state.currentLesson) === 1;
 
     // 음악
@@ -3026,7 +3036,7 @@
         themeBtn.disabled = true;
         themeBtn.classList.add('is-locked');
         themeBtn.setAttribute('aria-label', '배경 (이 차시에서는 사용 불가)');
-        themeBtn.title = '부루마블은 세계지도 배경으로 고정되어 있어요';
+        themeBtn.title = '주사위게임은 세계지도 배경으로 고정되어 있어요';
         themeUnlockBtn.hidden = true;
       } else {
         themeBtn.hidden = false;
@@ -3274,10 +3284,11 @@
     }
 
     const current = editor.value;
-    // 1차 경로: "## 보드 색상" 섹션 본문을 desc 한 줄로 교체 (lesson 1·2)
+    // 1차 경로: "## 보드 색상" / "### 보드 색상" 섹션 본문을 desc 한 줄로 교체 (lesson 1·2)
     // → parseLessonBackgroundPrompt 가 desc 를 그대로 AI 이미지 프롬프트로 사용
+    // v1.x: 헤딩 레벨 정규화로 ##·### 둘 다 인식
     const newLine = `- ${desc}`;
-    const sectionRegex = /(^##\s+보드\s*색상\s*\n)([\s\S]*?)(?=^#{2,3}\s+|^---|\Z)/m;
+    const sectionRegex = /(^#{2,3}\s+보드\s*색상\s*\n)([\s\S]*?)(?=^#{2,3}\s+|^---|\Z)/m;
     const sectionMatch = current.match(sectionRegex);
     let nextValue;
     let insertStart;
@@ -3780,6 +3791,8 @@
       parseLesson3Players, parseLesson3StartGold,
       // tutor hint matcher (bold/spacing tolerant)
       _findHintPos,
+      // code-view section matcher
+      findSectionKeywords, findCodeRange,
       // constants
       SIMPLE_COLOR_MAP, LESSON_INHERIT_SECTIONS, MARBLE_IP_META,
     });

@@ -10,7 +10,7 @@
     {
       "no": 1,
       "enabled": true,
-      "title": "부루마블 만들기",
+      "title": "주사위게임 만들기",
       "emoji": "🎲",
       "file": "lesson1.md",
       "guide_file": "lesson1_guide.md",
@@ -37,7 +37,7 @@
       "emoji": "🎨",
       "file": "lesson3.md",
       "guide_file": "lesson3_guide.md",
-      "subtitle": "넷마블 캐릭터와 지구본 맵으로 부루마블을 완성해요",
+      "subtitle": "넷마블 캐릭터와 지구본 맵으로 주사위게임을 완성해요",
       "duration_min": 40,
       "goal": "캐릭터 연출과 지도 배경으로 게임 완성도 높이기"
     },

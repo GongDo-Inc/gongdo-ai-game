@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>부루마블 — 공도 AI-Game</title>
+<title>주사위게임 — 공도 AI-Game</title>
 <style>
   :root{
     --color-red:#E63946; --color-red-dark:#C62E39;
@@ -627,6 +627,8 @@
     ['시드니', '오페라하우스의 도시.', '🦘'],
   ];
 
+  // 📝 "### 칸 목록" / "### 도시 목록" → 보드판에 들어갈 칸을 만들어주는 묶음이에요.
+  //    학생이 적은 도시 이름·가격이 여기서 보드 칸으로 변신해요!
   function createLoopCells(count) {
     if (count === 40) return DEFAULT_CELLS_40.map((cell) => ({ ...cell }));
     const safeCount = Math.max(4, Math.min(40, Number(count) || 12));
@@ -744,6 +746,8 @@
   }
 
   const CONFIG = normalizeConfig(injectedConfig, params);
+  // 📝 "### 배경" → 학생 문서에 적은 배경 이미지가 보드판 뒤에 깔리는 부분이에요.
+  //    3차시는 지구본 맵 🌍 이 기본으로 깔리고, 1·2차시는 학생이 적은 색으로 채워져요.
   // backgroundImageUrl 이 비어 있으면 (1차시 워크시트 + 이미지 생성 실패) 'none' 으로 둬서
   // url('') 같은 잘못된 CSS 가 들어가지 않도록 함
   document.documentElement.style.setProperty(
@@ -751,7 +755,10 @@
     CONFIG.board.backgroundImageUrl ? `url('${CONFIG.board.backgroundImageUrl}')` : 'none'
   );
   document.documentElement.style.setProperty('--stage-color', CONFIG.board.stageColor || '#EFE8D6');
+  // 📝 "### 보드 색상" → 학생 문서에 적은 색이 보드판 바탕에 채워져요. "분홍색" 이라고 쓰면 분홍 보드!
   document.documentElement.style.setProperty('--board-color', CONFIG.board.backgroundColor || '#D8C6A4');
+  // 📝 "### 보드판" → 12칸·40칸 같이 학생이 적은 칸 수대로 보드판 모양이 만들어져요.
+  //    워크시트 모양(1·2차시) 과 둥근 루프(3차시) 중에서 골라요.
   const BASE_CELLS = CONFIG.ui.lessonTheme === 'worksheet'
     ? createWorksheetCells(CONFIG.board.cellCount)
     : createLoopCells(CONFIG.board.cellCount);
@@ -765,6 +772,9 @@
     });
   }
 
+  // 📝 "### 플레이어 핀" → 너의 주인공·AI친구가 이 칸에서 만들어져요.
+  //    빨간/파란 핀으로 시작하고, 문서에 "데니스" 나 "슬기" 라고 쓰면 진짜 캐릭터로 바뀌어요!
+  // 📝 "### 시작 금액" → 두 사람 모두 30,000골드로 시작! 문서 숫자를 바꾸면 시작 돈이 달라져요.
   const state = {
     players: CONFIG.players.map((player, index) => ({
       ...player,
@@ -788,6 +798,9 @@
   const $ = (sel) => document.querySelector(sel);
   const hud = $('#hud');
   const board = $('#board');
+  // 📝 "### 주사위" → 학생이 적은 주사위 모양(별/하트/번개 등)이 굴리기 버튼에 그려져요.
+  // 📝 "### 조작 방법" → 화면 아래 [🎲 주사위 굴리기] 버튼을 누르면 주사위가 굴러가고
+  //    캐릭터가 자동으로 칸을 이동해요. 학생은 버튼만 누르면 끝!
   const rollBtn = $('#roll-btn');
   const rollEmoji = $('#roll-emoji');
   const rollLabel = $('#roll-label');
@@ -842,7 +855,7 @@
       });
     if (queryName && players[0]) players[0].name = queryName.slice(0, 14);
     return {
-      title: config.title || '부루마블',
+      title: config.title || '주사위게임',
       board: {
         // 1·2차시 워크시트 모드에선 default world map fallback 적용 안 함
         // → 이미지 생성 실패 시 깨끗한 보드 색상이 보이도록 ('none' 으로 처리)
@@ -894,6 +907,8 @@
     };
   }
 
+  // 📝 "### 도시 목록" → 학생 문서의 "1칸 : 서울 / 5000골드" 같은 줄을 읽어서
+  //    보드판 칸의 이름·가격·아이콘으로 바꿔주는 묶음이에요.
   function buildCells(defaultCells, config) {
     if (config.ui?.simpleBoard) {
       if (!config.board?.backgroundImageUrl) {
@@ -1008,7 +1023,7 @@
     const topbar = document.createElement('div');
     topbar.className = 'worksheet-topbar';
     topbar.innerHTML = `
-      <div class="worksheet-logo">🎲 부루마블</div>
+      <div class="worksheet-logo">🎲 주사위게임</div>
       <div class="worksheet-topbar-spacer"></div>
       <div class="worksheet-hud">
         <span class="worksheet-chip gold" id="worksheet-gold">🪙 10,000</span>
@@ -1468,6 +1483,8 @@
     }
   }
 
+  // 📝 "### 규칙" → 한 사람이 굴리고 끝나면 다음 사람 차례가 와요!
+  //    5바퀴 돌고 나면 골드가 가장 많은 사람이 승리 🏆.
   function nextTurn() {
     if (state.winner) return;
     state.turnIndex = (state.turnIndex + 1) % state.players.length;
@@ -1598,7 +1615,7 @@
   renderHud();
   renderTokens();
   updateHud();
-  console.log('[부루마블 설정]', CONFIG);
+  console.log('[주사위게임 설정]', CONFIG);
   setTimeout(() => {
     const me = state.players[0];
     toast(`🎲 ${CONFIG.title} · ${me.name} · 주사위 ${CONFIG.rules.diceCount}개`);

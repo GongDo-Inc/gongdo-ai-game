@@ -35,8 +35,8 @@ test('발표 자료 등록 — 게임 만들고 폼 채우고 제출 → /api/up
   await expect(modal).toBeVisible();
 
   // 폼 필드 채우기
-  await page.locator('#present-title-input').fill('내 부루마블 게임');
-  await page.locator('#present-tagline').fill('친구들과 함께하는 세계여행 부루마블!');
+  await page.locator('#present-title-input').fill('내 주사위게임');
+  await page.locator('#present-tagline').fill('친구들과 함께하는 세계여행 주사위게임!');
   await page.locator('#present-highlight').fill('도시를 매입하는 게 가장 재미있었어요');
   await page.locator('#present-learned').fill('AI 가 이미지를 만드는 법을 배웠어요');
 
@@ -51,7 +51,7 @@ test('발표 자료 등록 — 게임 만들고 폼 채우고 제출 → /api/up
   const calls = getUploadCalls(page);
   expect(calls.length).toBeGreaterThanOrEqual(1);
   const last = calls[calls.length - 1];
-  expect(last.title).toBe('내 부루마블 게임');
+  expect(last.title).toBe('내 주사위게임');
   expect(last.tagline).toContain('세계여행');
   expect(last.lessonNo).toBe(4);
   // html 페이로드 — 마블 게임 HTML 이 들어가야 함 (length > 0)

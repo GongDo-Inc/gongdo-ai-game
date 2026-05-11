@@ -117,3 +117,38 @@ test('코드 구경 — 외부 클릭으로 닫힘 (overlay 외부 영역)', asy
   await page.locator('h1.app-title').click();
   await expect(page.locator('#code-view-overlay')).toBeHidden();
 });
+
+// ─────────── 회귀 방어: 1·2·3차시 모든 핵심 섹션 [🔍 코드] 버튼이 매칭 성공해야 함 ───────────
+// (이전엔 bluemarble 템플릿에 // 📝 주석이 0개라 100% fallback → "못 찾았어요" 만 노출)
+
+for (const lessonNo of [1, 2, 3]) {
+  test(`${lessonNo}차시 — 핵심 섹션 [🔍 코드] 클릭 → success 메시지 (fallback 아님)`, async ({ page }) => {
+    await page.goto('/');
+    await selectLesson(page, lessonNo);
+    await clickStart(page);
+    await waitForGameIframe(page);
+
+    await page.locator('#btn-code-view').click();
+    await expect(page.locator('#code-view-overlay')).toBeVisible();
+
+    // 차시별 마크다운에 실제 존재하는 핵심 섹션 (모두의마블 템플릿이 주석으로 커버해야 함)
+    const sectionsByLesson = {
+      1: ['플레이어 핀', '주사위', '보드판', '보드 색상'],
+      2: ['플레이어 핀', '주사위', '보드판', '보드 색상', '도시 목록'],
+      3: ['플레이어 핀', '주사위', '도시 목록', '규칙', '보드판'],
+    };
+    const sections = sectionsByLesson[lessonNo];
+    for (const section of sections) {
+      const btn = page.locator(`#code-view-md .md-section-btn[data-section="${section}"]`);
+      // 섹션 자체가 없으면 skip (lesson1.md 에 "도시 목록" 이 없는 경우 등)
+      if ((await btn.count()) === 0) continue;
+      await btn.click();
+      const info = page.locator('#code-view-info');
+      await expect(info).toBeVisible({ timeout: 3_000 });
+      const kind = await info.getAttribute('data-kind');
+      expect(kind, `${lessonNo}차시 "${section}" 매칭 결과`).toBe('success');
+      const text = await info.textContent();
+      expect(text).toContain('찾았어요');
+    }
+  });
+}

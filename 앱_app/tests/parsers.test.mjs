@@ -272,3 +272,84 @@ test('_findHintPos — bold 없는 1차시 형식 줄에도 그대로 매칭 (�
   const lineIdx = lesson1Doc.slice(0, pos).split('\n').length;
   assert.equal(lineIdx, 2);
 });
+
+// ─────────── findCodeRange (코드 구경: 섹션 → 코드 매칭 회귀 방어) ───────────
+
+test('findCodeRange — // 📝 주석 매칭 (기존 동작 유지)', () => {
+  const code = [
+    'const x = 1;',
+    '// 📝 "### 주사위" → 학생이 적은 주사위 모양이 굴리기 버튼에 그려져요.',
+    'const rollBtn = $("#roll-btn");',
+    '',
+    'function next() {}',
+  ].join('\n');
+  const range = H.findCodeRange(code, ['주사위']);
+  assert.ok(range, '주사위 키워드 매칭 실패');
+  assert.equal(range.start, 1, '주석 줄(1) 부터');
+});
+
+test('findCodeRange — // 🌟 주석 매칭 (PDF 데모 톤 호환)', () => {
+  // PDF 2p 데모는 // 🌟 "..." → ... 톤을 씀 — 정규식 확장 후 매칭돼야 함
+  const code = [
+    '// 🌟 "← → 키: 좌우로 움직이기" → 키보드 화살표를 누르면 우주선이 옆으로 움직여요.',
+    'const keys = {};',
+  ].join('\n');
+  const range = H.findCodeRange(code, ['← →', '키']);
+  assert.ok(range, '🌟 이모지 주석 매칭 실패');
+});
+
+test('findCodeRange — HTML <!-- 📝 ... --> 주석도 매칭', () => {
+  const code = [
+    '<div>',
+    '  <!-- 📝 "### 배경" → 학생이 적은 배경이 보드판 뒤에 깔려요. -->',
+    '  <div class="board"></div>',
+    '</div>',
+  ].join('\n');
+  const range = H.findCodeRange(code, ['배경']);
+  assert.ok(range, 'HTML 주석 매칭 실패');
+});
+
+test('findCodeRange — 주석 0개 코드는 null (이전 동작 유지 — fallback 발동)', () => {
+  const code = 'const x = 1;\nconst y = 2;\nconsole.log(x + y);';
+  const range = H.findCodeRange(code, ['주사위', '플레이어 핀']);
+  assert.equal(range, null);
+});
+
+test('findCodeRange — 매칭 안되는 키워드는 null', () => {
+  const code = '// 📝 "### 주사위" → 설명';
+  const range = H.findCodeRange(code, ['xyz없는키워드']);
+  assert.equal(range, null);
+});
+
+test('findCodeRange — 범위 끝은 다음 // 📝 직전 줄까지', () => {
+  const code = [
+    '// 📝 "### 주사위" → 설명 1',
+    'const a = 1;',
+    'const b = 2;',
+    '',
+    '// 📝 "### 배경" → 설명 2',
+    'const c = 3;',
+  ].join('\n');
+  const range = H.findCodeRange(code, ['주사위']);
+  assert.ok(range);
+  assert.equal(range.start, 0);
+  // 다음 📝 (line 4) 직전, 또는 빈 줄(line 3) — 어느 쪽이든 4 미만이면 OK
+  assert.ok(range.end < 4, `범위 끝(${range.end}) 이 다음 📝(4) 직전이어야 함`);
+});
+
+// ─────────── findSectionKeywords (섹션 → 키워드 추출 회귀 방어) ───────────
+
+test('findSectionKeywords — 섹션 제목 + 하위 - 항목 들의 key·전체 모두 후보', () => {
+  const md = `### 플레이어 핀\n- 주인공: 빨간 핀\n- AI친구: 파란 핀\n\n### 다음 섹션\n`;
+  const keywords = H.findSectionKeywords(md, '플레이어 핀');
+  assert.ok(keywords.includes('플레이어 핀'));
+  assert.ok(keywords.includes('주인공'), '하위 항목 키만 따로');
+  assert.ok(keywords.includes('주인공: 빨간 핀'), '하위 항목 전체도 후보로');
+});
+
+test('findSectionKeywords — 섹션이 없으면 제목만 반환', () => {
+  const md = `### 다른 섹션\n- 항목 1\n`;
+  const keywords = H.findSectionKeywords(md, '플레이어 핀');
+  assert.equal(keywords.length, 1);
+  assert.equal(keywords[0], '플레이어 핀');
+});
