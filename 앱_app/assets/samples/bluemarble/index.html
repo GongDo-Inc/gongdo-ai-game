@@ -1042,15 +1042,22 @@
     `;
     board.appendChild(deck);
 
+    // 상대 플레이어 이름을 CONFIG.players 에서 가져와서 표기 (이전엔 "슬기" 하드코딩 — 학생 문서와
+    // 무관한 캐릭터 이름이 뜨던 문제 fix)
+    const opponent = state.players.find((p) => !p.isHuman);
+    const opponentName = opponent?.name || '친구';
+
     const turnNote = document.createElement('div');
     turnNote.className = 'worksheet-turn-note';
     turnNote.id = 'worksheet-turn-note';
-    turnNote.textContent = '슬기 차례 · 남은 시간 8s';
+    // 초기값은 첫 턴 = 사람(나) 차례. updateHud() 가 매 턴 갱신.
+    turnNote.textContent = `${state.players[0]?.name || '나'} 차례`;
     board.appendChild(turnNote);
 
     const aiBadge = document.createElement('div');
     aiBadge.className = 'worksheet-ai-badge';
-    aiBadge.innerHTML = '<span class="worksheet-ai-face"></span><span>슬기 AI</span>';
+    aiBadge.id = 'worksheet-ai-badge';
+    aiBadge.innerHTML = `<span class="worksheet-ai-face"></span><span>${opponentName} AI</span>`;
     board.appendChild(aiBadge);
   }
 

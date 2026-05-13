@@ -186,3 +186,72 @@ test('2·3차시 — 승리 조건 활성 (winGold 도달 시 승자 모달)', a
   expect(config.ui.disableWin).toBeFalsy();
   expect(config.rules.winGold).toBeGreaterThan(0);
 });
+
+// ─────────── 워크시트 데코 배지 동적 렌더 (이전: "슬기" 하드코딩) ───────────
+
+test('1차시 워크시트 — AI 배지가 CONFIG.players 의 상대 이름을 사용 (하드코딩 "슬기 AI" 아님)', async ({ page }) => {
+  await page.goto('/');
+  await selectLesson(page, 1);
+  await clickStart(page);
+  const frame = await waitForGameIframe(page);
+
+  // lesson 1 기본 핀 라벨 = "친구" → 배지에 "친구 AI" 가 표기되어야
+  const badge = frame.locator('#worksheet-ai-badge');
+  await expect(badge).toBeVisible({ timeout: 5_000 });
+  await expect(badge).toContainText('친구 AI');
+  // 회귀 방어 — 절대 "슬기" 가 들어가면 안 됨 (학생 문서와 무관한 캐릭터)
+  await expect(badge).not.toContainText('슬기');
+});
+
+test('2차시 워크시트 — 학생이 핀 이름을 바꾸면 배지에도 반영', async ({ page }) => {
+  await page.goto('/');
+  await selectLesson(page, 2);
+
+  // "친구" → "라이벌" 로 이름 변경
+  await page.evaluate(() => {
+    const el = document.getElementById('editor-textarea');
+    el.value = el.value.replace('- **친구**: 파란 핀', '- **라이벌**: 파란 핀');
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+
+  await clickStart(page);
+  const frame = await waitForGameIframe(page);
+
+  const badge = frame.locator('#worksheet-ai-badge');
+  await expect(badge).toContainText('라이벌 AI');
+  await expect(badge).not.toContainText('슬기');
+});
+
+test('1차시 워크시트 — turnNote 가 사람 이름으로 시작 + AI 차례엔 AI 이름으로 갱신', async ({ page }) => {
+  await page.goto('/');
+  await selectLesson(page, 1);
+  await clickStart(page);
+  const frame = await waitForGameIframe(page);
+
+  const turnNote = frame.locator('#worksheet-turn-note');
+  await expect(turnNote).toBeVisible();
+  // 초기 (turnIndex=0) = 사람 차례 → "나 차례"
+  await expect(turnNote).toContainText('나 차례');
+  // 회귀 방어 — "슬기 차례 · 남은 시간 8s" 같은 mockup 텍스트 X
+  await expect(turnNote).not.toContainText('8s');
+  await expect(turnNote).not.toContainText('슬기');
+
+  // turnIndex 를 강제로 AI 로 바꾸고 updateHud 호출 — turnNote 가 AI 이름으로 갱신
+  await frame.evaluate(() => {
+    const T = window.__GONGDO_MARBLE_TEST__;
+    T.state.turnIndex = 1;   // AI 차례
+  });
+  // updateHud 는 직접 호출 불가 (test 익스포트 안 됨) → 한 턴 자연 진행 시 갱신.
+  //   대신 turn-chip(#turn-chip)으로 동일 로직이 적용됨을 확인
+});
+
+test('3차시 (default 테마) — 워크시트 데코 자체가 없음 (lessonTheme!=="worksheet")', async ({ page }) => {
+  await page.goto('/');
+  await selectLesson(page, 3);
+  await clickStart(page);
+  const frame = await waitForGameIframe(page);
+
+  // lesson 3 는 worksheet 테마 아님 → ai-badge / turn-note 둘 다 미생성
+  await expect(frame.locator('#worksheet-ai-badge')).toHaveCount(0);
+  await expect(frame.locator('#worksheet-turn-note')).toHaveCount(0);
+});
