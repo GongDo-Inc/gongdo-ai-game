@@ -39,7 +39,7 @@ import { checkAndIncrement } from './_rateLimit.js';
 const MODEL = 'claude-haiku-4-5-20251001';
 
 // ─────────── 시스템 프롬프트 ───────────
-const SYSTEM_GENERATOR = `당신은 대한민국 초등 5~6학년 학생에게 HTML 게임 만들기를 도와주는 친절한 AI 선생님 "공도쌤"입니다.
+const SYSTEM_GENERATOR = `당신은 대한민국 초등 5~6학년 학생에게 HTML 게임 만들기를 도와주는 친절한 "AI 튜터"입니다.
 
 【🔴 최우선 규칙 0 — 캐릭터 렌더링 우선순위】
 순서를 엄수하세요:
@@ -313,7 +313,7 @@ if (overlap(player, enemy)) hp -= 1;
 - 학생 문서에 없는 내용 인용 ❌ (가짜 인용 금지)
 - 주석이 게임 동작을 바꾸는 것 ❌ (// 또는 <!-- --> 만 사용, 코드 로직 무관)`;
 
-const SYSTEM_TUTOR = `당신은 대한민국 초등 5~6학년 학생에게 "바이브코딩 문서 작성"을 도와주는 친절한 AI 선생님 "공도쌤"입니다.
+const SYSTEM_TUTOR = `당신은 대한민국 초등 5~6학년 학생에게 "바이브코딩 문서 작성"을 도와주는 친절한 "AI 튜터"입니다.
 
 【역할 — 매우 중요】
 - 오직 학생이 "바이브코딩 문서"를 더 잘 쓸 수 있도록 도움말·제안만 제공합니다.
@@ -467,7 +467,7 @@ function injectBgmIntoGame(html, score) {
   function __startBgm(){
     if (__bgmStarted) return;
     if (typeof Tone === 'undefined') return;
-    // 공도 AI-Game 앱 안에서는 부모 페이지가 BGM 담당 — iframe 은 무음 대기
+    // 넷마블창문프로젝트 AI-Game 앱 안에서는 부모 페이지가 BGM 담당 — iframe 은 무음 대기
     // sandbox="allow-scripts" 인 iframe 에서는 window.top 접근이 SecurityError 를 던질 수 있음
     try { if (window.top !== window.self) return; } catch(e) { return; }
     __bgmStarted = true;
@@ -600,7 +600,7 @@ export default async function handler(req, res) {
       mode,
       resetInSec: rl.resetInSec,
       message: mode === 'tutor'
-        ? '공도쌤이 조금 쉬고 있어요. 1분만 문서를 살펴볼까요?'
+        ? 'AI 튜터가 조금 쉬고 있어요. 1분만 문서를 살펴볼까요?'
         : mode === 'dice'
           ? '주사위 모양을 생각하는 중이에요. 잠깐 뒤에 다시 눌러볼까요?'
           : mode === 'pin_colors'
@@ -616,7 +616,7 @@ export default async function handler(req, res) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     // S-ERR-01: ENV 이름 노출 회피
-    res.status(500).json({ error: 'configuration_error', message: '공도쌤이 잠깐 쉬는 중이에요. 다시 시도해볼까요?' });
+    res.status(500).json({ error: 'configuration_error', message: 'AI 튜터가 잠깐 쉬는 중이에요. 다시 시도해볼까요?' });
     return;
   }
 
@@ -772,7 +772,7 @@ export default async function handler(req, res) {
     console.error('[api/chat] Anthropic 호출 실패:', err?.message || err);
     res.status(502).json({
       error: 'upstream_error',
-      message: '공도쌤이 잠깐 쉬는 중이에요. 다시 시도해볼까요?',
+      message: 'AI 튜터가 잠깐 쉬는 중이에요. 다시 시도해볼까요?',
     });
   }
 }

@@ -151,7 +151,7 @@ export default async function handler(req, res) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     // S-ERR-01: ENV 이름 노출 회피
-    res.status(500).json({ error: 'configuration_error', message: '공도쌤 작곡가가 잠깐 쉬는 중이에요.' });
+    res.status(500).json({ error: 'configuration_error', message: 'AI 작곡가가 잠깐 쉬는 중이에요.' });
     return;
   }
 
@@ -184,7 +184,7 @@ export default async function handler(req, res) {
     console.error('[api/music] Anthropic 오류:', err?.message || err);
     res.status(502).json({
       error: 'upstream_error',
-      message: '공도쌤 작곡가가 잠깐 쉬는 중이에요. 다시 시도해볼까요?',
+      message: 'AI 작곡가가 잠깐 쉬는 중이에요. 다시 시도해볼까요?',
     });
   }
 }

@@ -7,7 +7,7 @@ test.beforeEach(async ({ page }) => {
 
 test('앱 로드 — 헤더, 차시 트리, 에디터', async ({ page }) => {
   await page.goto('/');
-  await expect(page.locator('h1.app-title')).toContainText('공도 AI-Game');
+  await expect(page.locator('h1.app-title')).toContainText('넷마블창문프로젝트 AI-Game');
   await expect(page.locator('#btn-start')).toBeVisible();
   await expect(page.locator('#editor-textarea')).toBeVisible();
   // 차시 트리 4개 (manifest.json)

@@ -105,7 +105,7 @@ export default async function handler(req, res) {
 }
 
 function errorPage(msg) {
-  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>공도 AI-Game</title>
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"><title>넷마블창문프로젝트 AI-Game</title>
 <style>body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#FFF8EC;color:#5B3A22;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center;padding:24px}
 .card{background:#fff;border:3px solid #1A1A1A;border-radius:16px;padding:32px;box-shadow:4px 4px 0 #1A1A1A;max-width:420px}
 h1{font-size:28px;color:#E63946;margin:0 0 12px}p{font-size:16px;line-height:1.5;margin:0}.emoji{font-size:64px;margin-bottom:12px}</style></head>

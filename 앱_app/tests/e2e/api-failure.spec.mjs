@@ -6,9 +6,9 @@
  *   따라서 generator-mode 429/cooldown 흐름은 현재 빌드에서 도달 불가 — 테스트 X.
  *
  * 실제 실패가 사용자에게 노출되는 경로:
- *   1. /api/chat 'tutor' 429 → 봇 메시지 "공도쌤이 잠깐..."
+ *   1. /api/chat 'tutor' 429 → 봇 메시지 "AI 튜터가 잠깐..."
  *   2. /api/chat 'tutor' 500 → 봇 메시지 (data.message 노출)
- *   3. /api/chat 'tutor' 네트워크 예외 → "공도쌤이 잠깐 쉬고 있어요"
+ *   3. /api/chat 'tutor' 네트워크 예외 → "AI 튜터가 잠깐 쉬고 있어요"
  *   4. /api/lesson-background 502 → backgroundImageUrl 없음, 게임은 정상 생성
  *   5. /api/upload-game 502 → present-success 패널에 실패 안내 (user-critical-flows 에 이미 있음)
  */
@@ -28,7 +28,7 @@ test('튜터 — /api/chat 429 (rate limited) → 봇 메시지로 안내, 펜�
     await route.fulfill({
       status: 429,
       contentType: 'application/json',
-      body: JSON.stringify({ error: 'rate_limited', resetInSec: 30, message: '공도쌤이 잠깐 쉬고 있어요 (rate limit)' }),
+      body: JSON.stringify({ error: 'rate_limited', resetInSec: 30, message: 'AI 튜터가 잠깐 쉬고 있어요 (rate limit)' }),
     });
   });
 
@@ -39,7 +39,7 @@ test('튜터 — /api/chat 429 (rate limited) → 봇 메시지로 안내, 펜�
   // 펜딩 '...' 메시지가 정상 봇 메시지로 교체됨
   const lastBotMsg = page.locator('.tutor-message.tutor-message-bot').last();
   await expect(lastBotMsg).not.toHaveAttribute('data-pending', /.*/);
-  await expect(lastBotMsg).toContainText(/공도쌤|쉬고/);
+  await expect(lastBotMsg).toContainText(/AI 튜터|쉬고/);
 });
 
 test('튜터 — /api/chat 500 서버 에러 → data.message 가 봇 메시지로 노출', async ({ page }) => {
@@ -61,7 +61,7 @@ test('튜터 — /api/chat 500 서버 에러 → data.message 가 봇 메시지�
   await expect(lastBotMsg).toContainText('잠깐 문제가 생겼어요');
 });
 
-test('튜터 — /api/chat 네트워크 예외 (route abort) → "공도쌤이 잠깐 쉬고 있어요" 안내', async ({ page }) => {
+test('튜터 — /api/chat 네트워크 예외 (route abort) → "AI 튜터가 잠깐 쉬고 있어요" 안내', async ({ page }) => {
   await page.unroute('**/api/chat');
   await page.route('**/api/chat', (route) => route.abort('failed'));
 
@@ -90,7 +90,7 @@ test('튜터 — /api/chat 네트워크 예외 (route abort) → "공도쌤이 �
   );
 
   const lastBotMsg = page.locator('.tutor-message.tutor-message-bot').last();
-  await expect(lastBotMsg).toContainText('공도쌤이 잠깐 쉬고 있어요');
+  await expect(lastBotMsg).toContainText('AI 튜터가 잠깐 쉬고 있어요');
 });
 
 // ─────────── 배경 이미지 실패 ───────────

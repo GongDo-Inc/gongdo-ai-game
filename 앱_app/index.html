@@ -29,7 +29,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0">
-  <title>공도 AI-Game — 바이브코딩 실습환경</title>
+  <title>넷마블창문프로젝트 AI-Game — 바이브코딩 실습환경</title>
   <meta name="description" content="초등 5~6학년을 위한 AI 게임 만들기 실습환경">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -48,7 +48,7 @@
   <header class="app-header" role="banner">
     <h1 class="app-title">
       <span class="logo-mark" aria-hidden="true">🎮</span>
-      공도 AI-Game
+      넷마블창문프로젝트 AI-Game
     </h1>
     <nav class="header-actions" aria-label="주요 작업">
       <button type="button" class="btn btn-ghost" id="btn-help" aria-label="도움말">
@@ -316,7 +316,7 @@
     type="button"
     class="tutor-fab"
     id="tutor-fab"
-    aria-label="공도쌤 AI튜터 열기"
+    aria-label="AI 튜터 열기"
     aria-controls="tutor-drawer"
     aria-expanded="false">
     <img class="tutor-fab-avatar mascot-img" src="./assets/characters/archive/seulgi.png" alt="" aria-hidden="true"
@@ -333,7 +333,7 @@
           <img class="mascot-img" src="./assets/characters/archive/seulgi.png" alt=""
                onerror="this.replaceWith(document.createTextNode('👧'))">
         </span>
-        공도쌤에게 물어보기
+        AI 튜터에게 물어보기
       </h2>
       <button type="button" class="drawer-close" id="tutor-close" aria-label="AI튜터 닫기">
         <span aria-hidden="true">✕</span>
@@ -346,18 +346,18 @@
                onerror="this.replaceWith(document.createTextNode('👦'))">
         </span>
         <div class="tutor-bubble">
-          안녕하세요! 저는 공도쌤이에요. 🌟<br>
+          안녕하세요! 저는 AI 튜터예요. 🌟<br>
           게임 만들기가 어려우면 언제든 물어봐요!
         </div>
       </div>
     </div>
     <form class="tutor-input-form" id="tutor-form" autocomplete="off">
-      <label for="tutor-input" class="sr-only">공도쌤에게 질문 입력</label>
+      <label for="tutor-input" class="sr-only">AI 튜터에게 질문 입력</label>
       <input
         type="text"
         id="tutor-input"
         class="tutor-input"
-        placeholder="공도쌤에게 질문해보세요..."
+        placeholder="AI 튜터에게 질문해보세요..."
         maxlength="200">
       <button type="submit" class="btn btn-primary tutor-send" aria-label="질문 보내기">
         <span aria-hidden="true">📨</span>
@@ -401,7 +401,7 @@
           <summary>📎 자동으로 함께 들어가는 내용</summary>
           <ul id="present-auto-list" class="present-auto-list">
             <li>내 바이브코딩 문서 전체</li>
-            <li>공도쌤과 나눈 대화</li>
+            <li>AI 튜터와 나눈 대화</li>
             <li>선택한 주인공·배경·음악</li>
             <li>[시작] 실행 횟수와 시간</li>
           </ul>
@@ -447,7 +447,7 @@
   <div id="generating-modal" class="modal-overlay" hidden role="status" aria-live="polite" aria-labelledby="gen-title">
     <div class="modal-card generating-card">
       <div class="gen-character" aria-hidden="true">
-        <img class="mascot-img mascot-img-xl" src="./assets/characters/archive/dennis.png" alt="공도쌤"
+        <img class="mascot-img mascot-img-xl" src="./assets/characters/archive/dennis.png" alt="AI 튜터"
              onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'👦',style:'font-size:84px'}))">
       </div>
       <h2 id="gen-title" class="gen-title">AI가 게임을 만들고 있어요</h2>
@@ -566,7 +566,7 @@
   </div>
 
   <footer class="app-footer" role="contentinfo">
-    <small>© 2026 Netmarble Cultural Foundation. All Rights Reserved. · 공도 AI-Game v0.4 (S17 파일럿)</small>
+    <small>© 2026 Netmarble Cultural Foundation. All Rights Reserved. · 넷마블창문프로젝트 AI-Game v0.4 (S17 파일럿)</small>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/tone@15.0.4/build/Tone.js"></script>

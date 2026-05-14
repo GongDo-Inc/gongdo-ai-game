@@ -1431,7 +1431,7 @@
         return;
       }
       console.error(err);
-      $('#game-status').textContent = '⚠️ 공도쌤이 잠깐 쉬는 중이에요. 다시 시도해볼까요?';
+      $('#game-status').textContent = '⚠️ AI 튜터가 잠깐 쉬는 중이에요. 다시 시도해볼까요?';
     } finally {
       btnStart.disabled = false;
       state.isGenerating = false;
@@ -1698,7 +1698,7 @@
   }
 
   function handleHelpClick() {
-    alert('공도 AI-Game 도움말\n\n1. 왼쪽에서 차시 폴더를 펼쳐요 📁\n2. 문서를 클릭해서 읽어요 📄\n3. 내용을 수정하고 [시작]을 눌러요 ▶\n4. 막히면 우하단 공도쌤에게 물어봐요 🦸');
+    alert('넷마블창문프로젝트 AI-Game 도움말\n\n1. 왼쪽에서 차시 폴더를 펼쳐요 📁\n2. 문서를 클릭해서 읽어요 📄\n3. 내용을 수정하고 [시작]을 눌러요 ▶\n4. 막히면 우하단 AI 튜터에게 물어봐요 🦸');
   }
 
   // ─────────── 쿨다운 모달 (서버에서 resetInSec 받음) ───────────
@@ -1766,7 +1766,7 @@
         const data = await callChatApi({ document: text, mode: 'tutor', editorContent });
         removePendingTutor();
         if (data.rateLimited) {
-          appendTutorMessage(data.message || '공도쌤이 잠깐 쉬고 있어요.', 'bot');
+          appendTutorMessage(data.message || 'AI 튜터가 잠깐 쉬고 있어요.', 'bot');
           return;
         }
         if (data.error) {
@@ -1788,7 +1788,7 @@
       } catch (err) {
         console.warn('[AI튜터] 네트워크 예외:', err);
         removePendingTutor();
-        appendTutorMessage('공도쌤이 잠깐 쉬고 있어요. 다시 물어봐요!', 'bot');
+        appendTutorMessage('AI 튜터가 잠깐 쉬고 있어요. 다시 물어봐요!', 'bot');
       }
     });
   }
@@ -3592,7 +3592,7 @@
       list.appendChild(li);
     };
     add(`내 바이브코딩 문서 (${docLen}자)`);
-    add(`공도쌤과 대화 ${tutorCount}번`);
+    add(`AI 튜터와 대화 ${tutorCount}번`);
     add(`[▶ 시작] 실행 ${promptCount}번`);
     if (character) add(`주인공: ${character}`);
     if (theme) add(`배경: ${theme}`);
@@ -3657,9 +3657,9 @@
     L.push('');
 
     if (state.tutorLog.length) {
-      L.push('## 💬 공도쌤과의 대화');
+      L.push('## 💬 AI 튜터와의 대화');
       state.tutorLog.forEach((entry) => {
-        const who = entry.role === 'user' ? '🙋 나' : '🦸 공도쌤';
+        const who = entry.role === 'user' ? '🙋 나' : '🦸 AI 튜터';
         L.push(`- **${who}**: ${entry.text.replace(/\n/g, ' ')}`);
       });
       L.push('');
@@ -3676,7 +3676,7 @@
 
     L.push('---');
     L.push('');
-    L.push('*본 발표자료는 공도 AI-Game (넷마블문화재단 × 공도) 에서 자동 생성되었어요.*');
+    L.push('*본 발표자료는 넷마블창문프로젝트 AI-Game (넷마블문화재단 × 공도) 에서 자동 생성되었어요.*');
     L.push('*© 2026 Netmarble Cultural Foundation. All Rights Reserved.*');
 
     return L.join('\n');
@@ -3721,10 +3721,10 @@
     L.push(`  • 배경: ${theme}`);
     L.push(`  • 배경음악: ${applied ? applied.mood || '내가 만든 음악' : '없음'}`);
     L.push('');
-    L.push(`💬 공도쌤과 ${tutorCount}번 대화  ·  ▶ 시작 ${state.promptHistory.length}번 실행`);
+    L.push(`💬 AI 튜터와 ${tutorCount}번 대화  ·  ▶ 시작 ${state.promptHistory.length}번 실행`);
     L.push('');
     L.push('━━━━━━━━━━━━━━━━━━━━━');
-    L.push('© 2026 Netmarble Cultural Foundation × 공도 AI-Game');
+    L.push('© 2026 Netmarble Cultural Foundation × 넷마블창문프로젝트 AI-Game');
 
     return L.join('\n');
   }

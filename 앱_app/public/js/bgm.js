@@ -372,7 +372,7 @@
 
         genBtn.disabled = true;
         statusEl.className = 'bgm-ai-status';
-        statusEl.textContent = '공도쌤이 음악을 만들고 있어요... 🎹 (5~10초)';
+        statusEl.textContent = 'AI 튜터가 음악을 만들고 있어요... 🎹 (5~10초)';
 
         try {
           const data = await generateFromPrompt(prompt);
